@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import jsonify,request
 import mysql.connector
 from configs.config import dbconfig
 
@@ -90,7 +90,7 @@ class ProductModel:
                     price=result['price'],
                     quantity=result['quantity'],
                     quantity_sold=result['quantity_sold'],
-                    product_image=product_image,  # Sử dụng danh sách hình ảnh hoặc danh sách trống nếu Link_anh là None
+                    product_image=product_image, 
                     category_id=result['category_id'],
                     category_name=result['category_name']
                 )
@@ -101,3 +101,79 @@ class ProductModel:
         finally:
             if self.con:
                 self.con.close()
+
+
+
+
+    def search_products(self):
+        try:
+            con = connect_to_database()
+            cur = con.cursor(dictionary=True)
+
+            keyword = request.args.get("keyword")
+            min_price = request.args.get("min_price")
+            max_price = request.args.get("max_price")
+            category = request.args.get("category")
+            if min_price =="" :
+                min_price = 0
+            if max_price =="":
+                max_price = 99999999999999
+
+    
+            cur.execute("""
+            WITH AnhSanPham AS (
+                SELECT
+                    pr.*,
+                    GROUP_CONCAT(pi.url) AS Link_anh
+                FROM
+                    products pr
+                LEFT JOIN
+                    product_images pi ON pi.product_id = pr.id
+                GROUP BY
+                    pr.id
+            )
+            SELECT
+                pr.id,
+                pr.name,
+                pr.price,
+                SUM(psi.quantity) AS quantity,
+                SUM(psi.quantity_sold) AS quantity_sold,
+                Link_anh,
+                pr.category_id AS category_id,
+                ct.name AS category_name
+            FROM
+                products pr
+            LEFT JOIN AnhSanPham asp ON asp.id = pr.id
+            LEFT JOIN categories ct ON ct.id = pr.category_id
+            LEFT JOIN product_size psi ON psi.product_id = pr.id
+            WHERE
+                pr.is_deleted != TRUE 
+                AND pr.name LIKE %s
+                AND pr.price BETWEEN %s AND %s
+                AND ct.name LIKE %s
+            GROUP BY
+                pr.id;
+            """, (f"%{keyword}%", min_price, max_price, f"%{category}%"))
+
+            results = cur.fetchall()
+            products = []
+            for result in results:
+                product_image = result['Link_anh'].split(',') if result['Link_anh'] is not None else []
+                product = Product(
+                    product_id=result['id'],
+                    product_name=result['name'],
+                    price=result['price'],
+                    quantity=result['quantity'],
+                    quantity_sold=result['quantity_sold'],
+                    product_image=product_image,
+                    category_id=result['category_id'],
+                    category_name=result['category_name']
+                )
+                products.append(product.to_dict())
+
+            return jsonify(products)
+        except mysql.connector.Error as err:
+            print(f"Lỗi: {err}")
+        finally:
+            if con:
+                con.close()
