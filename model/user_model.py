@@ -142,17 +142,17 @@ class UserModel:
             print("Người dùng đã được đăng ký thành công.")
             query_find_id_user = f"SELECT id FROM users WHERE username = '{user_data['username']}'"
             self.cur.execute(query_find_id_user)
-            user_data['user_id'] = self.cur.fetchone()
-
+            result = self.cur.fetchone()
+            id = result['id']
             # Tạo access token và refresh token
-            access_token = create_access_token(identity=user_data['user_id'])
-            refresh_token = create_refresh_token(identity=user_data["user_id"])
+            access_token = create_access_token(identity=id)
+            refresh_token = create_refresh_token(identity=id)
             return jsonify({
-                "user_id": user_data['user_id'],
+                "user_id": id,
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "message" : "user registered successfully"
-            })
+            }), 201
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
             return jsonify({
