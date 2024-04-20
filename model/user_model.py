@@ -85,7 +85,8 @@ class UserModel:
             self.cur = self.con.cursor(dictionary=True)
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
-            
+         
+    #input: full_name, gmail, username, password
     def register_user(self, data):
         try:
             query_find_username = f"SELECT * FROM users WHERE username = '{data['username']}'"
@@ -139,18 +140,26 @@ class UserModel:
             self.cur.execute(query_insert_user, user_values)
             self.con.commit()
             print("Người dùng đã được đăng ký thành công.")
+            query_find_id_user = f"SELECT id FROM users WHERE username = '{user_data['username']}'"
+            self.cur.execute(query_find_id_user)
+            user_data['user_id'] = self.cur.fetchone()
+
             # Tạo access token và refresh token
-            access_token = create_access_token(identity=user_data["user_id"])
+            access_token = create_access_token(identity=user_data['user_id'])
             refresh_token = create_refresh_token(identity=user_data["user_id"])
             return jsonify({
-                "user_id": user.user_id,
+                "user_id": user_data['user_id'],
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "message" : "user registered successfully"
             })
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
+            return jsonify({
+                'msg': err
+            })
                 
+    # input: Authorization: Bearer token
     def get_all_user(self):
         try:
             query = "SELECT * FROM users"
@@ -176,7 +185,7 @@ class UserModel:
                     username=result['username']
                 )
                 users.append(user.to_dict())
-            return jsonify(users)
+            return jsonify(users), 200
             
         except mysql.connector.Error as err:
             print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
@@ -184,23 +193,24 @@ class UserModel:
                 "message": "error"
             })
     
+    # input: username, password
     def login(self, data):
         try:
             print("data login ", data)
-            query_find_user = f"SELECT * FROM users WHERE username = '{data['username']}'"
+            query_find_user = f"SELECT * FROM users WHERE username = '{data['username']}' and role = 'USER' and is_enabled = 1 and is_locked = 0"
             self.cur.execute(query_find_user)
             user = self.cur.fetchone()
             if not user:
                 print("Tên người dùng không tồn tại.")
                 return jsonify({
                     "message": "Tên người dùng không tồn tại."
-                })
+                }), 401
 
             if user['password'] != data['password']:
                 print("Mật khẩu không chính xác.")
                 return jsonify({
                     "message": "Mật khẩu không chính xác."
-                })
+                }), 401
 
             user_id = user['id']
             access_token = create_access_token(identity=user_id)
@@ -218,6 +228,9 @@ class UserModel:
             return response , 200
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
+            return jsonify({
+                'msg': err
+            })
     
     def logout():
         response = jsonify({
@@ -266,5 +279,34 @@ class UserModel:
             return jsonify({
                 "message" : "error"
             })
-            
-            
+
+    def get_user_by_id(self, id):
+        try:
+            query = f"SELECT * FROM users WHERE id = {id}"
+            self.cur.execute(query)
+            result = self.cur.fetchone()
+            print("result")
+            user = User(
+                user_id=result['id'],
+                is_enabled=result['is_enabled'],
+                is_locked=result['is_locked'],
+                create_at=result['create_at'],
+                update_at=result['update_at'],
+                account_provider=result['account_provider'],
+                full_name=result['full_name'],
+                gender=result['gender'],
+                gmail=result['gmail'],
+                password=result['password'],
+                phone_number=result['phone_number'],
+                role=result['role'],
+                url_image=result['url_image'],
+                username=result['username']
+            )
+            return jsonify(
+                user.to_dict()
+            ), 200
+        except mysql.connector.Error as err:
+            print(f"Lỗi: {err}")
+            return jsonify({
+                'msg': err
+            })

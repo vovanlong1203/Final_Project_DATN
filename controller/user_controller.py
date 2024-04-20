@@ -18,28 +18,27 @@ def get_all_users():
 
 @app.route("/users/register", methods=["POST"])
 def register_users():
-    return user_model.register_user(request.form)
-
+    return user_model.register_user(request.json)
 
 @app.route("/users/login", methods=["POST"])
 def login_user():
-    return user_model.login(request.form)
+    return user_model.login(request.json)
 
-@app.route('/logout', methods=['POST'])
+@app.route("/logout", methods=['POST'])
 def logout_user():
     return user_model.logout()
 
-@app.route('/token/refresh', methods=['POST'])
+@app.route("/token/refresh", methods=['POST'])
 @jwt_required(refresh=True)
 def refresh_test():
     return user_model.refresh()
 
-@app.route('/api/example', methods=['GET'])
+@app.route("/api/example", methods=['GET'])
 @jwt_required()
 def route_protected():
     return user_model.protected()
 
-@app.route('/update/<int:id>', methods=['POST'])
+@app.route("/update/<int:id>", methods=['POST'])
 @jwt_required()
 def update_user(id): 
     if request.method == 'POST':
@@ -55,5 +54,10 @@ def update_user(id):
         # Save the file
         file.save(os.path.join(upload_folder, filename))
 
-    result = user_model.update(request.form, id, filename)
+    result = user_model.update(request.json, id, filename)
     return result
+
+@app.route("/user/<int:id>", methods=['GET'])
+@jwt_required()
+def detail_user(id):
+    return user_model.get_user_by_id(id)
