@@ -3,6 +3,8 @@ import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
 import datetime
+from datetime import timezone
+from datetime import timedelta
 from flask_jwt_extended import (
     create_access_token, 
     create_refresh_token, 
@@ -10,7 +12,9 @@ from flask_jwt_extended import (
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
-    jwt_required
+    jwt_required,
+    unset_access_cookies, 
+    get_jwt
 )
 from werkzeug.utils import secure_filename
 
@@ -147,12 +151,21 @@ class UserModel:
             # Tạo access token và refresh token
             access_token = create_access_token(identity=id)
             refresh_token = create_refresh_token(identity=id)
+            
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_insert_refresh = f"INSERT INTO token_refresh (reset_required, user_id, expiration_date, token) \
+                                    VALUES ({0}, {id}, '{formatted_datetime}', '{refresh_token}')"
+            self.cur.execute(query_insert_refresh)
+            self.con.commit()
+            
             return jsonify({
                 "user_id": id,
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "message" : "user registered successfully"
             }), 201
+            
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
             return jsonify({
@@ -216,6 +229,15 @@ class UserModel:
             access_token = create_access_token(identity=user_id)
             refresh_token = create_refresh_token(identity=user_id)
             
+            current_datetime = datetime.datetime.now()
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_token = f"UPDATE token_refresh SET \
+                            expiration_date = '{formatted_datetime}', \
+                            token = '{refresh_token}' \
+                            WHERE user_id = {user_id}"
+            self.cur.execute(query_token)
+            self.con.commit()
             response = jsonify({
                 "message": "Đăng nhập thành công.",
                 "access_token": access_token,
@@ -232,11 +254,12 @@ class UserModel:
                 'msg': err
             })
     
-    def logout():
+    def logout(self):
         response = jsonify({
             'message': 'logout'
         })
         unset_jwt_cookies(response)
+        unset_access_cookies(response)
         return response, 200
         
     def refresh(self):
