@@ -44,10 +44,11 @@ class Role(Enum):
     
     
 class User:
+    # trường birthday, address, thêm role vào json trong login  
     def __init__(self, user_id=None, is_enabled=1, is_locked=0, create_at=None, 
                  update_at=None, account_provider=None, full_name=None, gender=None, 
                  gmail=None, password=None, phone_number=None, role=None, 
-                 url_image=None, username=None):        
+                 url_image=None, username=None, birthday=None):        
         self.user_id = user_id
         self.is_enabled = is_enabled
         self.is_locked = is_locked
@@ -62,10 +63,11 @@ class User:
         self.role = role
         self.url_image = url_image
         self.username = username
+        self.birthday = birthday
         
     def to_dict(self):
         return {
-            'user_id': self.user_id,
+            'id': self.user_id,
             'is_enabled': self.is_enabled,
             'is_locked': self.is_locked,
             'create_at': self.create_at,
@@ -75,10 +77,11 @@ class User:
             'gender': self.gender,
             'gmail': self.gmail,
             'password': self.password,
-            'phone_number': self.phone_number,
+            'phoneNumber': self.phone_number,
             'role': self.role,
-            'url_image': self.url_image,
-            'username': self.username
+            'urlImage': self.url_image,
+            'username': self.username,
+            'birthday': self.birthday
         }
     
             
@@ -177,6 +180,7 @@ class UserModel:
         try:
             query = "SELECT * FROM users"
             self.cur.execute(query)
+            self.con.commit()
             results = self.cur.fetchall()
             users = []
             
@@ -238,11 +242,18 @@ class UserModel:
                             WHERE user_id = {user_id}"
             self.cur.execute(query_token)
             self.con.commit()
+            
+            query_role = f"SELECT role from users WHERE id = {user_id}"
+            self.cur.execute(query_role)
+            result = self.cur.fetchone()
+            self.con.autocommit()
+            
             response = jsonify({
                 "message": "Đăng nhập thành công.",
                 "access_token": access_token,
                 "refresh_token": refresh_token,
-                "user_id": user_id
+                "user_id": user_id,
+                "role" : result['role']
             })
             
             set_access_cookies(response, access_token)
