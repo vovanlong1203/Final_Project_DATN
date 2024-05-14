@@ -18,7 +18,7 @@ def connect_to_database():
         return None
 
 class Product:
-    def __init__(self, product_id=None, product_name=None, price=None, quantity=None, quantity_sold=None, product_image=None, category_id=None, category_name=None):
+    def __init__(self, product_id=None, product_name=None, price=None, price_promote=None,quantity=None, quantity_sold=None, product_image=None, category_id=None, category_name=None):
         self.product_id = product_id
         self.product_name = product_name
         self.price = price
@@ -27,24 +27,43 @@ class Product:
         self.product_image = product_image
         self.category_id = category_id
         self.category_name = category_name
+        self.price_promote = price_promote
 
     def to_dict(self):
         return {
             'product_id': self.product_id,
             'product_name': self.product_name,
             'price': self.price,
+            'price_promote': self.price_promote,
             'quantity': self.quantity,
             'quantity_sold': self.quantity_sold,
             'product_image': self.product_image,
             'category_id': self.category_id,
             'category_name': self.category_name
+
+
         }
     
+
+class Category:
+    def __init__(self, id=None, name=None, description=None):
+        self.id = id
+        self.name = name
+        self.description = description
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description
+        }
+
 class ProductDetail:
     def __init__(self,
                  product_id=None,
                  product_name=None,
                  price=None,
+                 price_promote=None,
                  quantity=None,
                  quantity_sold=None,
                  description=None,
@@ -62,6 +81,7 @@ class ProductDetail:
         self.product_id = product_id
         self.product_name = product_name
         self.price = price
+        self.price_promote =price_promote
         self.quantity = quantity
         self.quantity_sold = quantity_sold
         self.description = description
@@ -78,22 +98,23 @@ class ProductDetail:
 
     def to_dict(self):
         return {
-            'product_id': self.product_id,
-            'product_name': self.product_name,
+            'productId': self.product_id,
+            'productName': self.product_name,
             'price': self.price,
+            "price_promote": self.price_promote,
             'quantity': self.quantity,
             'quantity_sold': self.quantity_sold,
             'description': self.description,
-            'product_urls': self.product_urls,
-            'comment_created_ats': self.comment_created_ats,
-            'comment_contents': self.comment_contents,
-            'comment_users': self.comment_users,
-            'avatar_users': self.avatar_users,
-            'size_types': self.size_types,
-            'size_names': self.size_names,
-            'size_quantity': self.size_quantity,
+            'productUrls': self.product_urls,
+            'commentCreatedAts': self.comment_created_ats,
+            'commentContents': self.comment_contents,
+            'commentUsers': self.comment_users,
+            'avatarUsers': self.avatar_users,
+            'sizeTypes': self.size_types,
+            'sizeNames': self.size_names,
+            'sizeQuantity': self.size_quantity,
             'rate': self.rate,
-            'avg_rate': self.avg_rate
+            'avgRate': self.avg_rate
             
         }
 
@@ -110,8 +131,9 @@ class ProductDetail:
                 product_id=result[0]['id'],
                 product_name=result[0]['name'],
                 price=result[0]['price'],
-                quantity=result[0]['quantity'],
-                quantity_sold=result[0]['quantity_sold'],
+                price_promote = result[0]["price_promote"],
+                quantity=int(result[0]['quantity']),
+                quantity_sold=int(result[0]['quantity_sold']),
                 description=result[0]['description'],
                 product_urls=product_image,
                 comment_created_ats=result[0]['ngaytaocmt'].split(',') if result[0]['ngaytaocmt'] else [],
@@ -163,13 +185,20 @@ class ProductModel:
                 SUM(psi.quantity_sold) AS quantity_sold,
                 Link_anh,
                 pr.category_id AS category_id,
-                ct.name AS category_name
+                ct.name AS category_name,
+                CASE 
+        WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+        ELSE (pr.price - promotions.discount_value) 
+    END AS price_promote 
 
             FROM
                 products pr
             LEFT JOIN AnhSanPham asp ON asp.id = pr.id
             LEFT JOIN categories ct ON ct.id = pr.category_id
             LEFT JOIN product_size psi ON psi.product_id = pr.id
+            LEFT JOIN promotions 
+            ON 
+				pr.promotion_id = promotions.id
             WHERE
                 pr.is_deleted != TRUE
             GROUP BY
@@ -178,44 +207,75 @@ class ProductModel:
             results = self.cur.fetchall()
             products = []
             for result in results:
-                product_image = result['Link_anh'].split(',') if result['Link_anh'] is not None else []
+                # Kiểm tra xem 'Link_anh' có tồn tại trong result và không phải là None
+                if result.get('Link_anh'):
+                    # Nếu tồn tại, tách chuỗi liên kết hình ảnh bằng dấu phẩy và chuyển thành danh sách
+                    product_image = result['Link_anh'].split(',')
+                else:
+                    # Nếu không có 'Link_anh' hoặc giá trị là None, sử dụng danh sách rỗng
+                    product_image = []
+                
+                # Tạo đối tượng Product và gán các thuộc tính
                 product = Product(
                     product_id=result['id'],
                     product_name=result['name'],
                     price=result['price'],
+                    price_promote=result['price_promote'],
                     quantity=result['quantity'],
                     quantity_sold=result['quantity_sold'],
-                    product_image=product_image, 
+                    product_image=product_image,  # Sử dụng danh sách liên kết hình ảnh
                     category_id=result['category_id'],
                     category_name=result['category_name']
                 )
+                
+                # Chuyển đổi đối tượng Product thành dictionary và thêm vào danh sách products
                 products.append(product.to_dict())
-            return jsonify(products)
+
+
+
+
+
+
+
+
+            # products = []
+            # for result in results:
+            #     product_image = result['Link_anh'] if result['Link_anh'] is not None else []
+            #     product = Product(
+            #         product_id=result['id'],
+            #         product_name=result['name'],
+            #         price=result['price'],
+            #         price_promote =result['price_promote'],
+            #         quantity=result['quantity'],
+            #         quantity_sold=result['quantity_sold'],
+            #         product_image=product_image, 
+            #         category_id=result['category_id'],
+            #         category_name=result['category_name']
+            #     )
+            #     products.append(product.to_dict())
+            return jsonify({
+                "items":products
+            })
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
-        finally:
-            if self.con:
-                self.con.close()
+        
 
 
 
 
     def search_products(self):
         try:
-            con = connect_to_database()
-            cur = con.cursor(dictionary=True)
-
             keyword = request.args.get("keyword")
             min_price = request.args.get("min_price")
             max_price = request.args.get("max_price")
             category = request.args.get("category")
-            if min_price =="" :
+            print("key:",keyword,"   min:" ,min_price,"    max:",max_price,"    category:" ,category)
+            if min_price ==None and max_price ==None:
                 min_price = 0
-            if max_price =="":
                 max_price = 99999999999999
 
-    
-            cur.execute("""
+            if category!=None:
+                self.cur.execute("""
             WITH AnhSanPham AS (
                 SELECT
                     pr.*,
@@ -235,22 +295,109 @@ class ProductModel:
                 SUM(psi.quantity_sold) AS quantity_sold,
                 Link_anh,
                 pr.category_id AS category_id,
-                ct.name AS category_name
+                ct.name AS category_name,
+                CASE 
+        WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+        ELSE (pr.price - promotions.discount_value) 
+    END AS price_promote
             FROM
                 products pr
             LEFT JOIN AnhSanPham asp ON asp.id = pr.id
             LEFT JOIN categories ct ON ct.id = pr.category_id
             LEFT JOIN product_size psi ON psi.product_id = pr.id
+                                 LEFT JOIN promotions 
+            ON 
+				pr.promotion_id = promotions.id
             WHERE
                 pr.is_deleted != TRUE 
-                AND pr.name LIKE %s
                 AND pr.price BETWEEN %s AND %s
                 AND ct.name LIKE %s
             GROUP BY
                 pr.id;
-            """, (f"%{keyword}%", min_price, max_price, f"%{category}%"))
+            """, ( min_price, max_price, f"%{category}%"))
+            if keyword!=None:
+                self.cur.execute("""
+            WITH AnhSanPham AS (
+                SELECT
+                    pr.*,
+                    GROUP_CONCAT(pi.url) AS Link_anh
+                FROM
+                    products pr
+                LEFT JOIN
+                    product_images pi ON pi.product_id = pr.id
+                GROUP BY
+                    pr.id
+            )
+            SELECT
+                pr.id,
+                pr.name,
+                pr.price,
+                SUM(psi.quantity) AS quantity,
+                SUM(psi.quantity_sold) AS quantity_sold,
+                Link_anh,
+                pr.category_id AS category_id,
+                ct.name AS category_name,
+                                 CASE 
+        WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+        ELSE (pr.price - promotions.discount_value) 
+    END AS price_promote
+            FROM
+                products pr
+            LEFT JOIN AnhSanPham asp ON asp.id = pr.id
+            LEFT JOIN categories ct ON ct.id = pr.category_id
+            LEFT JOIN product_size psi ON psi.product_id = pr.id
+            LEFT JOIN promotions 
+            ON 
+				pr.promotion_id = promotions.id
+            WHERE
+                pr.is_deleted != TRUE 
+                AND pr.name LIKE %s
+                AND pr.price BETWEEN %s AND %s
+            GROUP BY
+                pr.id;
+            """, (f"%{keyword}%", min_price, max_price))
+            if keyword == None and category == None:
+                self.cur.execute("""
+            WITH AnhSanPham AS (
+                SELECT
+                    pr.*,
+                    GROUP_CONCAT(pi.url) AS Link_anh
+                FROM
+                    products pr
+                LEFT JOIN
+                    product_images pi ON pi.product_id = pr.id
+                GROUP BY
+                    pr.id
+            )
+            SELECT
+                pr.id,
+                pr.name,
+                pr.price,
+                SUM(psi.quantity) AS quantity,
+                SUM(psi.quantity_sold) AS quantity_sold,
+                Link_anh,
+                pr.category_id AS category_id,
+                ct.name AS category_name,
+                                 CASE 
+        WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+        ELSE (pr.price - promotions.discount_value) 
+    END AS price_promote
+            FROM
+                products pr
+            LEFT JOIN AnhSanPham asp ON asp.id = pr.id
+            LEFT JOIN categories ct ON ct.id = pr.category_id
+            LEFT JOIN product_size psi ON psi.product_id = pr.id
+                                 LEFT JOIN promotions 
+            ON 
+				pr.promotion_id = promotions.id
+            WHERE
+                pr.is_deleted != TRUE 
+                AND pr.price BETWEEN %s AND %s
+            GROUP BY
+                pr.id;
+            """, ( min_price, max_price))
 
-            results = cur.fetchall()
+            results = self.cur.fetchall()
             products = []
             for result in results:
                 product_image = result['Link_anh'].split(',') if result['Link_anh'] is not None else []
@@ -258,6 +405,7 @@ class ProductModel:
                     product_id=result['id'],
                     product_name=result['name'],
                     price=result['price'],
+                    price_promote=result['price_promote'],
                     quantity=result['quantity'],
                     quantity_sold=result['quantity_sold'],
                     product_image=product_image,
@@ -266,23 +414,17 @@ class ProductModel:
                 )
                 products.append(product.to_dict())
 
-            return jsonify(products)
+            return jsonify({"items":products})
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
-        finally:
-            if con:
-                con.close()
 
 
     def get_product_detail(self):
         try:
-            con = connect_to_database()
-            cur = con.cursor(dictionary=True)
-
-            pr_id = request.args.get("pr_id")
-            cur.execute("""            
-            WITH 
-            AnhSanPham AS (
+            
+            pr_id = request.args.get("id")
+            self.cur.execute("""            
+            WITH AnhSanPham AS (
                 SELECT
                     pr.*,
                     GROUP_CONCAT(pi.url) AS Link_anh
@@ -332,6 +474,10 @@ class ProductModel:
                 pr.id,
                 pr.name,
                 pr.price,
+                 CASE
+                    WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+        ELSE (pr.price - promotions.discount_value) 
+    END AS price_promote ,
                 SUM(psi.quantity) AS quantity,
                 SUM(psi.quantity_sold) AS quantity_sold,
                 pr.description,
@@ -353,6 +499,9 @@ class ProductModel:
                 product_size psi ON psi.product_id = pr.id
             LEFT JOIN
                 AnhSanPham asp ON pr.id = asp.id
+                LEFT JOIN promotions 
+            ON 
+				pr.promotion_id = promotions.id
             JOIN
                 Sizes siz ON siz.Id_sp = pr.id
             LEFT JOIN
@@ -361,10 +510,11 @@ class ProductModel:
                 pr.id = %s AND pr.is_deleted != 1
             GROUP BY
                 pr.id;
+            
 
             """, (pr_id,))
 
-            result = cur.fetchall()
+            result = self.cur.fetchall()
             product_detail = ProductDetail.from_database_result(result)
 
             if product_detail:
@@ -373,6 +523,24 @@ class ProductModel:
                 return jsonify({"message": "Product not found"})
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
-        finally:
-            if con:
-                con.close()
+    
+
+    def get_category_name(self):
+        try:
+            
+            self.cur.execute("""            
+           SELECT * FROM categories;
+            """, )
+
+            results = self.cur.fetchall()
+            categorys = []
+            for result in results:
+                category = Category(
+                    id=result['id'],
+                    name=result['name'],
+                    description=result['description']
+                )
+                categorys.append(category.to_dict())
+            return jsonify(categorys)
+        except mysql.connector.Error as err:
+            print(f"Lỗi: {err}")
