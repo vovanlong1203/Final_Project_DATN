@@ -56,7 +56,7 @@ def route_protected():
 
 @app.route("/update/<int:id>", methods=['POST'])
 @jwt_required()
-def update_user(id): 
+def update_user_1(id): 
     if request.method == 'POST':
         file = request.files['url_image']
         filename = secure_filename(file.filename)

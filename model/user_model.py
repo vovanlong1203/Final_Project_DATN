@@ -246,7 +246,7 @@ class UserModel:
             query_role = f"SELECT role from users WHERE id = {user_id}"
             self.cur.execute(query_role)
             result = self.cur.fetchone()
-            self.con.autocommit()
+            self.con.commit()
             
             response = jsonify({
                 "message": "Đăng nhập thành công.",
