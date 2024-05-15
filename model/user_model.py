@@ -320,7 +320,7 @@ class UserModel:
             return jsonify({
                 'msg': str(err)
             }) 
-    
+
     def logout(self):
         response = jsonify({
             'message': 'logout'

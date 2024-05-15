@@ -30,7 +30,14 @@ def delete_product_into_cartitem(user_id):
     print('json : ', request.json)
     return cartitem_model.delete_product_in_cart_items(user_id, request.json)
 
-@app.route("/api/cart/user/<int:user_id>/<int:cart_items_id>", methods=["PUT"])
+@app.route("/api/carts/user/<int:user_id>/<int:cart_items_id>", methods=["PUT"])
 @jwt_required()
-def update_prdouct_into_cart_item(user_id, cart_items_id):
-    return cartitem_model.update_product_in_cart_items(request.json, cart_items_id, user_id)
+def update_product_into_cart_item(user_id, cart_items_id):
+    print("user_id: ", user_id)
+    print("cart_items_id: ", cart_items_id)
+    try:
+        print("request.json: ", request.json)
+        return cartitem_model.update_product_in_cart_items(user_id, cart_items_id, request.json)
+    except Exception as e:
+        return str(e), 500
+    
