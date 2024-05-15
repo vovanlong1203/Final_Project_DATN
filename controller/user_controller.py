@@ -39,6 +39,10 @@ def register_users():
 def login_user():
     return user_model.login(request.json)
 
+@app.route("/admin/login", methods=["POST"])
+def login_admin():
+    return user_model.login_admin(request.json)
+
 @app.route("/logout", methods=['DELETE'])
 @jwt_required()
 def logout_user():
@@ -72,8 +76,3 @@ def update_user(id):
 
     result = user_model.update(request.json, id, filename)
     return result
-
-@app.route("/user/<int:id>", methods=['GET'])
-@jwt_required()
-def detail_user(id):
-    return user_model.get_user_by_id(id)
