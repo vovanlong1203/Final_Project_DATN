@@ -75,8 +75,6 @@ class ProductModel:
             LEFT JOIN AnhSanPham asp ON asp.id = pr.id
             LEFT JOIN categories ct ON ct.id = pr.category_id
             LEFT JOIN product_size psi ON psi.product_id = pr.id
-            WHERE
-                pr.is_deleted != TRUE
             GROUP BY
                 pr.id;
             """)
@@ -101,3 +99,108 @@ class ProductModel:
         finally:
             if self.con:
                 self.con.close()
+    
+    def add_product(self, data):
+        try:
+            if 'promotion' in data and data['promotion'] == "null":
+                query = "INSERT INTO products (name, description, create_at, update_at, price, category_id, status, promotion_id) \
+                    VALUES (%s, %s, NOW(), NOW(), %s, %s, %s, NULL)"
+                values = (data['name'], data['description'], data['price'], data['category'], data['status'])
+            else:
+                query = "INSERT INTO products (name, description, create_at, update_at, price, category_id, status, promotion_id) \
+                    VALUES (%s, %s, NOW(), NOW(), %s, %s, %s, %s)"
+                values = (data['name'], data['description'], data['price'], data['category'], data['status'], data['promotion'])
+
+            self.cur.execute(query, values)
+            self.con.commit()
+
+            return jsonify({
+                "msg": "successfully"
+            })
+
+        except Exception as e:
+            print("error: ", e)
+            return jsonify({
+                "msg": str(e)
+            })
+         
+    def get_product(self):
+        try: 
+            query = """
+                SELECT 
+                    products.id as id, 
+                    products.name as name, 
+                    products.description as description,
+                    products.status as status, 
+                    products.price as price, 
+                    categories.name as category, 
+                    IF(promotions.end_at < NOW(), NULL, promotions.name) AS promotion
+                FROM 
+                    products
+                LEFT JOIN 
+                    categories on products.category_id = categories.id
+                LEFT JOIN 
+                    promotions on products.promotion_id = promotions.id
+            """
+                        
+            self.cur.execute(query)
+            result = self.cur.fetchall()
+            print("result: ", result)
+            lst = []
+            for item in result:
+                lst.append({
+                    'id': item['id'],
+                    'name': item['name'],
+                    'description': item['description'],
+                    'status': item['status'],
+                    'price': item['price'],
+                    'category': item['category'],
+                    'promotion': item['promotion']
+                })
+            self.con.commit()
+            return jsonify(lst)
+        except Exception as e:
+            print("error: ", e)
+            return jsonify({"msg": str(e)}) 
+    
+    def update_product(self, new_data):
+        try:
+            query = f"""
+                UPDATE products
+                SET 
+                    name = '{new_data.get('name')}',
+                    description = '{new_data.get('description')}',
+                    status = '{new_data.get('status')}',
+                    price = {new_data.get('price')},
+                    category_id = (SELECT id FROM categories WHERE name = '{new_data.get('category')}'),
+                    promotion_id = (
+                        CASE 
+                            WHEN '{new_data.get('promotion')}' IS NULL THEN NULL 
+                            WHEN '{new_data.get('promotion')}' = 'null' THEN NULL 
+                            ELSE (SELECT id FROM promotions WHERE name = '{new_data.get('promotion')}')
+                        END
+                    )
+                WHERE
+                    id = {new_data.get('id')}
+            """
+            self.cur.execute(query)
+            self.con.commit()
+            return jsonify({"msg": "Product updated successfully"})
+        except Exception as e:
+            print("error: ", e)
+            return jsonify({"msg": str(e)})
+
+    def delete_product(self, id):
+        try:
+            query = f"""
+                        DELETE FROM products WHERE id = {id}
+                    """
+            self.cur.execute(query)
+            self.con.commit()
+            
+            return jsonify({
+                "msg": "products deleted successfully"
+            })
+        except Exception as e:
+            print("error: ", e)
+            return jsonify({"msg": str(e)})
