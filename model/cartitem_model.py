@@ -37,6 +37,8 @@ class CartIemModel:
         query = f"SELECT id ,product_id as productId, quantity, unit_price as unitPrice, size  FROM cart_items WHERE user_id = {user_id}"
         self.cur.execute(query)
         results = self.cur.fetchall()
+        self.con.commit()
+        
         return jsonify(results) , 200
     
     def add_product_into_cart_items(self, user_id, data):
