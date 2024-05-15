@@ -205,6 +205,7 @@ class ProductModel:
                 pr.id;
             """)
             results = self.cur.fetchall()
+            self.con.commit()
             products = []
             for result in results:
                 # Kiểm tra xem 'Link_anh' có tồn tại trong result và không phải là None
@@ -398,6 +399,7 @@ class ProductModel:
             """, ( min_price, max_price))
 
             results = self.cur.fetchall()
+            self.con.commit()
             products = []
             for result in results:
                 product_image = result['Link_anh'].split(',') if result['Link_anh'] is not None else []
@@ -515,6 +517,7 @@ class ProductModel:
             """, (pr_id,))
 
             result = self.cur.fetchall()
+            self.con.commit()
             product_detail = ProductDetail.from_database_result(result)
 
             if product_detail:
@@ -533,6 +536,7 @@ class ProductModel:
             """, )
 
             results = self.cur.fetchall()
+            self.con.commit()
             categorys = []
             for result in results:
                 category = Category(
