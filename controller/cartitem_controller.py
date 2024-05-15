@@ -23,7 +23,7 @@ def add_product_into_cartitems(user_id):
     print("json : ", request.json)
     return cartitem_model.add_product_into_cart_items(user_id, request.json)
 
-@app.route("/api/carts/user/<int:user_id>", methods=["DELETE"])
+@app.route("/api/cart/user/<int:user_id>", methods=["DELETE"])
 @jwt_required()
 def delete_product_into_cartitem(user_id):
     print("user_id: ", user_id)

@@ -90,9 +90,8 @@ class PromotionModel:
         print("id: ", promotion_id)
         print("request.json: ", data)
         # Chuyển đổi định dạng ngày giờ
-        start_at = datetime.datetime.strptime(data['start_at'], '%a, %d %b %Y %H:%M:%S %Z')
-        end_at = datetime.datetime.strptime(data['end_at'], '%a, %d %b %Y %H:%M:%S %Z')
-        
+        start_at = datetime.datetime.strptime(data['start_at'], '%Y-%m-%dT%H:%M')
+        end_at = datetime.datetime.strptime(data['end_at'], '%Y-%m-%dT%H:%M')
         try:
             query = f"UPDATE promotions SET \
                         name = '{data['name']}', \

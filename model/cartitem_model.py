@@ -38,7 +38,7 @@ class CartIemModel:
         self.cur.execute(query)
         results = self.cur.fetchall()
         self.con.commit()
-        
+
         return jsonify(results) , 200
     
     def add_product_into_cart_items(self, user_id, data):
@@ -100,7 +100,7 @@ class CartIemModel:
         return jsonify({
                 "message" : "error"
             })          
-    
+
     def update_product_in_cart_items(self, user_id, cart_items_id, data):
         try:
             query_update = """
@@ -191,4 +191,5 @@ class CartIemModel:
             return jsonify({
                 "message" : str(e)
             })
+
 
