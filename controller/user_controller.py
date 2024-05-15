@@ -5,11 +5,26 @@ from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
     create_refresh_token,
     get_jwt_identity, set_access_cookies,
-    set_refresh_cookies, unset_jwt_cookies
+    set_refresh_cookies, unset_jwt_cookies, get_jwt
 )
 from werkzeug.utils import secure_filename
 import os
+from datetime import datetime
+from datetime import timedelta
 user_model = UserModel()
+
+@app.after_request
+def refresh_expiring_jwts(response):
+    try:
+        exp_timestamp = get_jwt()["exp"]
+        now = datetime.now()
+        target_timestamp = datetime.timestamp(now + timedelta(minutes=30)) 
+        if target_timestamp > exp_timestamp:
+            access_token = create_access_token(identity=get_jwt_identity())
+            set_access_cookies(response, access_token)
+        return response
+    except (RuntimeError, KeyError):
+        return response
 
 @app.route("/users/all", methods=["GET"])
 @jwt_required()
@@ -24,7 +39,12 @@ def register_users():
 def login_user():
     return user_model.login(request.json)
 
-@app.route("/logout", methods=['POST'])
+@app.route("/admin/login", methods=["POST"])
+def login_admin():
+    return user_model.login_admin(request.json)
+
+@app.route("/logout", methods=['DELETE'])
+@jwt_required()
 def logout_user():
     return user_model.logout()
 
@@ -56,8 +76,3 @@ def update_user(id):
 
     result = user_model.update(request.json, id, filename)
     return result
-
-@app.route("/user/<int:id>", methods=['GET'])
-@jwt_required()
-def detail_user(id):
-    return user_model.get_user_by_id(id)

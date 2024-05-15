@@ -3,6 +3,8 @@ import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
 import datetime
+from datetime import timezone
+from datetime import timedelta
 from flask_jwt_extended import (
     create_access_token, 
     create_refresh_token, 
@@ -10,7 +12,9 @@ from flask_jwt_extended import (
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
-    jwt_required
+    jwt_required,
+    unset_access_cookies, 
+    get_jwt
 )
 from werkzeug.utils import secure_filename
 
@@ -40,10 +44,11 @@ class Role(Enum):
     
     
 class User:
+    # trường birthday, address, thêm role vào json trong login  
     def __init__(self, user_id=None, is_enabled=1, is_locked=0, create_at=None, 
                  update_at=None, account_provider=None, full_name=None, gender=None, 
                  gmail=None, password=None, phone_number=None, role=None, 
-                 url_image=None, username=None):        
+                 url_image=None, username=None, birthday=None):        
         self.user_id = user_id
         self.is_enabled = is_enabled
         self.is_locked = is_locked
@@ -58,10 +63,11 @@ class User:
         self.role = role
         self.url_image = url_image
         self.username = username
+        self.birthday = birthday
         
     def to_dict(self):
         return {
-            'user_id': self.user_id,
+            'id': self.user_id,
             'is_enabled': self.is_enabled,
             'is_locked': self.is_locked,
             'create_at': self.create_at,
@@ -71,10 +77,11 @@ class User:
             'gender': self.gender,
             'gmail': self.gmail,
             'password': self.password,
-            'phone_number': self.phone_number,
+            'phoneNumber': self.phone_number,
             'role': self.role,
-            'url_image': self.url_image,
-            'username': self.username
+            'urlImage': self.url_image,
+            'username': self.username,
+            'birthday': self.birthday
         }
     
             
@@ -147,12 +154,21 @@ class UserModel:
             # Tạo access token và refresh token
             access_token = create_access_token(identity=id)
             refresh_token = create_refresh_token(identity=id)
+            
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_insert_refresh = f"INSERT INTO token_refresh (reset_required, user_id, expiration_date, token) \
+                                    VALUES ({0}, {id}, '{formatted_datetime}', '{refresh_token}')"
+            self.cur.execute(query_insert_refresh)
+            self.con.commit()
+            
             return jsonify({
                 "user_id": id,
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "message" : "user registered successfully"
             }), 201
+            
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
             return jsonify({
@@ -164,6 +180,7 @@ class UserModel:
         try:
             query = "SELECT * FROM users"
             self.cur.execute(query)
+            self.con.commit()
             results = self.cur.fetchall()
             users = []
             
@@ -216,11 +233,27 @@ class UserModel:
             access_token = create_access_token(identity=user_id)
             refresh_token = create_refresh_token(identity=user_id)
             
+            current_datetime = datetime.datetime.now()
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_token = f"UPDATE token_refresh SET \
+                            expiration_date = '{formatted_datetime}', \
+                            token = '{refresh_token}' \
+                            WHERE user_id = {user_id}"
+            self.cur.execute(query_token)
+            self.con.commit()
+            
+            query_role = f"SELECT role from users WHERE id = {user_id}"
+            self.cur.execute(query_role)
+            result = self.cur.fetchone()
+            self.con.commit()
+            
             response = jsonify({
                 "message": "Đăng nhập thành công.",
                 "access_token": access_token,
                 "refresh_token": refresh_token,
-                "user_id": user_id
+                "user_id": user_id,
+                "role" : result['role']
             })
             
             set_access_cookies(response, access_token)
@@ -232,11 +265,68 @@ class UserModel:
                 'msg': err
             })
     
-    def logout():
+    def login_admin(self, data):
+        try:
+            print("data ", data)
+            query_find_user = f"SELECT * FROM users WHERE username = '{data['username']}' and role = 'ADMIN' and is_enabled = 1 and is_locked = 0"
+            self.cur.execute(query_find_user)
+            user = self.cur.fetchone()
+            if not user:
+                print("Tên người dùng không tồn tại.")
+                return jsonify({
+                    "message": "Tên người dùng không tồn tại."
+                }), 401
+                
+            if user['password'] != data['password']:
+                print("Mật khẩu không chính xác.")
+                return jsonify({
+                    "message": "Mật khẩu không chính xác."
+                }), 401
+                
+            user_id = user['id']
+            access_token = create_access_token(identity=user_id)
+            refresh_token = create_refresh_token(identity=user_id)
+            
+            current_datetime = datetime.datetime.now()
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_token = f"UPDATE token_refresh SET \
+                            expiration_date = '{formatted_datetime}', \
+                            token = '{refresh_token}' \
+                            WHERE user_id = {user_id}"
+            self.cur.execute(query_token)
+            self.con.commit()
+            
+            query_role = f"SELECT role from users WHERE id = {user_id}"
+            self.cur.execute(query_role)
+            result = self.cur.fetchone()
+            self.con.commit()
+            
+            response = jsonify({
+                "message": "Đăng nhập thành công.",
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user_id": user_id,
+                "role" : result['role']
+            })
+            
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            return response , 200
+        
+            
+        except Exception as err:
+            print(f"Lỗi: {err}")
+            return jsonify({
+                'msg': str(err)
+            }) 
+    
+    def logout(self):
         response = jsonify({
             'message': 'logout'
         })
         unset_jwt_cookies(response)
+        unset_access_cookies(response)
         return response, 200
         
     def refresh(self):
@@ -280,33 +370,3 @@ class UserModel:
                 "message" : "error"
             })
 
-    def get_user_by_id(self, id):
-        try:
-            query = f"SELECT * FROM users WHERE id = {id}"
-            self.cur.execute(query)
-            result = self.cur.fetchone()
-            print("result")
-            user = User(
-                user_id=result['id'],
-                is_enabled=result['is_enabled'],
-                is_locked=result['is_locked'],
-                create_at=result['create_at'],
-                update_at=result['update_at'],
-                account_provider=result['account_provider'],
-                full_name=result['full_name'],
-                gender=result['gender'],
-                gmail=result['gmail'],
-                password=result['password'],
-                phone_number=result['phone_number'],
-                role=result['role'],
-                url_image=result['url_image'],
-                username=result['username']
-            )
-            return jsonify(
-                user.to_dict()
-            ), 200
-        except mysql.connector.Error as err:
-            print(f"Lỗi: {err}")
-            return jsonify({
-                'msg': err
-            })
