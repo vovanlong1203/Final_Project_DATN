@@ -34,9 +34,11 @@ class CartIemModel:
             print(f"Lỗi: {err}")
             
     def view_cart_items(self, user_id):
-        query = f"SELECT product_id, quantity, unit_price, size  FROM cart_items WHERE user_id = {user_id}"
+        query = f"SELECT id ,product_id as productId, quantity, unit_price as unitPrice, size  FROM cart_items WHERE user_id = {user_id}"
         self.cur.execute(query)
         results = self.cur.fetchall()
+        self.con.commit()
+
         return jsonify(results) , 200
     
     def add_product_into_cart_items(self, user_id, data):
@@ -98,21 +100,96 @@ class CartIemModel:
         return jsonify({
                 "message" : "error"
             })          
-    
-    def update_product_in_cart_items(self, data, cart_items_id, user_id):
-        query_update = f"UPDATE cart_items SET quantity = {data['quantity']}, size = '{data['size']}' WHERE id = {cart_items_id} and product_id = {data['product_id']} and user_id = {user_id}"
-        self.cur.execute(query_update)
-        self.con.commit()
-        
-        query_product_by_cart_items_id = f"SELECT product_id, quantity, unit_price, size FROM cart_items WHERE id = {cart_items_id} and user_id = {user_id}"
-        self.cur.execute(query_product_by_cart_items_id)
-        result = self.cur.fetchone()
-        
-        return jsonify({
-            "message" : "successfully",
-            "productId": result['product_id'],
-            "quantity": result['quantity'],
-            "unitPrice": result['unit_price'],
-            "size": result['size']
-        })
+
+    def update_product_in_cart_items(self, user_id, cart_items_id, data):
+        try:
+            query_update = """
+            UPDATE cart_items 
+            SET quantity = %s, size = %s 
+            WHERE id = %s AND product_id = %s AND user_id = %s
+            """
+            self.cur.execute(query_update, (data['quantity'], data['size'], cart_items_id, data['productId'], user_id))
+            self.con.commit()
+            
+            check_size = f"""SELECT * FROM cart_items 
+                            WHERE size = '{data['size']}' and product_id = {data['productId']} and user_id = {user_id} """
+            self.cur.execute(check_size)
+            result_check_size = self.cur.fetchall()
+            
+            id_check_size = []
+            
+            for item in result_check_size:
+                id_check_size.append(item['id'])
+            
+            print("id_check_size: ", id_check_size)
+            
+            if (len(id_check_size) > 1):
+                query_update = f"""
+                    UPDATE cart_items ci1
+                    INNER JOIN (
+                        SELECT size, SUM(quantity) AS quantity
+                        FROM cart_items
+                        WHERE product_id = {data['productId']} AND user_id = {user_id}
+                        GROUP BY size
+                    ) ci2 ON ci1.size = ci2.size
+                    SET ci1.quantity = COALESCE(ci2.quantity, 0)
+                    WHERE ci1.product_id = {data['productId']}
+                    AND ci1.user_id = {user_id}
+                    and ci1.size = '{data['size']}';
+                """
+                self.cur.execute(query_update)
+                self.con.commit()
+                
+                delete_duplicate = f"""
+                    DELETE ci1
+                    FROM cart_items ci1
+                    INNER JOIN (
+                        SELECT MIN(id) AS id, size
+                        FROM cart_items
+                        WHERE product_id = {data['productId']} AND user_id = {user_id}
+                        GROUP BY size
+                        HAVING COUNT(*) > 1
+                    ) ci2 ON ci1.size = ci2.size AND ci1.id <> ci2.id
+                    WHERE ci1.product_id = {data['productId']}
+                    AND ci1.user_id = {user_id};
+                """
+                self.cur.execute(delete_duplicate)
+                self.con.commit()
+                
+                query_product_by_cart_items_id = f"""
+                    SELECT product_id as productId, quantity, unit_price as unitPrice, size FROM cart_items 
+                    WHERE id = {cart_items_id} and user_id = {user_id}
+                """
+                self.cur.execute(query_product_by_cart_items_id)
+                result = self.cur.fetchone()
+                self.con.commit()
+                
+                return jsonify({
+                    "message" : "successfully",
+                    "productId": result['productId'],
+                    "quantity": result['quantity'],
+                    "unitPrice": result['unitPrice'],
+                    "size": result['size']
+                }) 
+            
+            
+            query_product_by_cart_items_id = f"""
+                SELECT product_id as productId, quantity, unit_price as unitPrice, size FROM cart_items 
+                WHERE id = {cart_items_id} and user_id = {user_id}"""
+            self.cur.execute(query_product_by_cart_items_id)
+            result = self.cur.fetchone()
+            
+            return jsonify({
+                "message" : "successfully",
+                "productId": result['productId'],
+                "quantity": result['quantity'],
+                "unitPrice": result['unitPrice'],
+                "size": result['size']
+            })
+        except Exception as e:
+            print("Exception", str(e))
+            return jsonify({
+                "message" : str(e)
+            })
+
 
