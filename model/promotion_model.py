@@ -15,6 +15,16 @@ def connect_to_database():
     except mysql.connector.Error as err:
         print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
         return None
+    
+def check_date_format(date_string):
+    try:
+        date = datetime.datetime.strptime(date_string, '%a, %d %b %Y %H:%M:%S %Z')
+        return date.strftime('%Y-%m-%dT%H:%M')
+    except ValueError:
+        try:
+            return datetime.datetime.strptime(date_string, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            return None
  
 class Promotions:
     def __init__(self, id=None, name=None, description=None, is_active=1, start_at=None, end_at=None, discount_value=None):
@@ -90,15 +100,15 @@ class PromotionModel:
         print("id: ", promotion_id)
         print("request.json: ", data)
         # Chuyển đổi định dạng ngày giờ
-        start_at = datetime.datetime.strptime(data['start_at'], '%Y-%m-%dT%H:%M')
-        end_at = datetime.datetime.strptime(data['end_at'], '%Y-%m-%dT%H:%M')
+        start_at = check_date_format(data['start_at'])
+        end_at = check_date_format(data['end_at'])
         try:
             query = f"UPDATE promotions SET \
                         name = '{data['name']}', \
                         description = '{data['description']}', \
                         is_active = {data['is_active']}, \
-                        start_at = '{start_at.strftime('%Y-%m-%d %H:%M:%S')}', \
-                        end_at = '{end_at.strftime('%Y-%m-%d %H:%M:%S')}', \
+                        start_at = '{start_at}', \
+                        end_at = '{end_at}', \
                         discount_value = {data['discount_value']} \
                         WHERE id = {promotion_id}"
             
