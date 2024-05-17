@@ -206,6 +206,7 @@ class ProductModel:
                 pr.id;
             """)
             results = self.cur.fetchall()
+            self.con.commit()
             products = []
             for result in results:
                 if result.get('Link_anh'):
@@ -296,6 +297,7 @@ class ProductModel:
                         
             self.cur.execute(query)
             result = self.cur.fetchall()
+            self.con.commit()
             print("result: ", result)
             lst = []
             for item in result:
@@ -491,6 +493,7 @@ class ProductModel:
             """, ( min_price, max_price))
 
             results = self.cur.fetchall()
+            self.con.commit()
             products = []
             for result in results:
                 product_image = result['Link_anh'].split(',') if result['Link_anh'] is not None else []
@@ -609,7 +612,7 @@ class ProductModel:
 
             result = self.cur.fetchall()
             product_detail = ProductDetail.from_database_result(result)
-
+            self.con.commit()
             if product_detail:
                 return jsonify(product_detail.to_dict())
             else:
@@ -626,6 +629,7 @@ class ProductModel:
             """, )
 
             results = self.cur.fetchall()
+            self.con.commit()
             categorys = []
             for result in results:
                 category = Category(
