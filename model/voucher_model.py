@@ -2,8 +2,7 @@ from flask import jsonify,request
 import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
-import datetime
-
+from datetime import datetime
 def connect_to_database():
     try:
         con = mysql.connector.connect(
@@ -16,14 +15,17 @@ def connect_to_database():
         print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
         return None
     
-class Gender(Enum):
+class DiscountType(Enum):
     amount = 'AMOUNT'
-    free_shipping = 'FREE_SHIPPING'
     percentage = 'PERCENTAGE'
+
+class VoucherType(Enum):
+    purchase = 'PURCHASE'
+    freeship = 'PREE_SHIP'
     
 
 class Voucher:
-    def __init__(self, id=None, minimum_purchase_amount=None, usage_count=None, usage_limit=None, voucher_value=None, end_at=None, start_at=None, code=None, discount_type=None):
+    def __init__(self, id=None, minimum_purchase_amount=None, usage_count=None, usage_limit=None, voucher_value=None, end_at=None, start_at=None, code=None, discount_type=None, voucher_type = None,maxDiscountValue = None, active=None):
         self.id = id
         self.minimum_purchase_amount = minimum_purchase_amount
         self.usage_count = usage_count
@@ -33,9 +35,27 @@ class Voucher:
         self.start_at = start_at
         self.code = code
         self.discount_type = discount_type
+        self.voucher_type = voucher_type
+        self.maxDiscountValue = maxDiscountValue
+        self.active = active
         
-    def to_dict(self):
+    def to_dict_mobile(self):
         return {
+            'id': self.id,
+            'minimumPurchaseAmount': self.minimum_purchase_amount,
+            'usageCount': self.usage_count,
+            'usageLimit': self.usage_limit,
+            'discountValue': self.voucher_value,
+            'expiryDate': self.end_at.strftime('%H:%M:%S %d-%m-%Y'),
+            'start_at': self.start_at,
+            'code': self.code,
+            'discountType': self.discount_type,
+            'voucherType' : self.voucher_type,
+            'active' : bool(self.active) ,
+            'maxDiscountValue' : self.maxDiscountValue
+        }
+    def to_dict(self):
+        return{
             'id': self.id,
             'minimum_purchase_amount': self.minimum_purchase_amount,
             'usage_count': self.usage_count,
@@ -44,7 +64,8 @@ class Voucher:
             'end_at': self.end_at,
             'start_at': self.start_at,
             'code': self.code,
-            'discount_type': self.discount_type
+            'discount_type': self.discount_type,
+            'voucher_type' : self.voucher_type
         }
         
 class VoucherModel:
@@ -149,3 +170,32 @@ class VoucherModel:
             return jsonify({
                 "msg": e
             })
+        
+    def get_voucher_by_type(self):
+        try:
+            voucherType = request.args.get("voucherType")
+            query = f"""SELECT * FROM vouchers WHERE voucher_type = '{voucherType}' and active = 1"""
+            self.cur.execute(query)
+            results = self.cur.fetchall()
+            vouchers = []
+            for result in results:
+                voucher =Voucher(
+                    id=result['id'],
+                    minimum_purchase_amount=result['minimum_purchase_amount'],
+                    usage_count=result['usage_count'],
+                    usage_limit=result['usage_limit'],
+                    voucher_value=result['voucher_value'],
+                    end_at=result['end_at'],
+                    start_at=result['start_at'],
+                    code=result['code'],
+                    discount_type=result['discount_type'],
+                    voucher_type=result['voucher_type'],
+                    maxDiscountValue=result['maxDiscountValue'],
+                    active= result['active']
+                )
+                vouchers.append(voucher.to_dict_mobile())
+            return jsonify({
+                "content":vouchers
+            })
+        except mysql.connector.Error as err:
+            print(f"Lỗi: {err}")

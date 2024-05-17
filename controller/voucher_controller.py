@@ -29,3 +29,7 @@ def update_voucher(id):
 def delete_voucher(id):
     return voucher_model.delete_voucher(id)
 
+@app.route("/api/vouchers", methods=["GET"])
+@jwt_required()
+def get_voucher():
+    return voucher_model.get_voucher_by_type()
