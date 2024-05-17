@@ -321,7 +321,7 @@ class ProductModel:
                 SET 
                     name = '{new_data.get('name')}',
                     description = '{new_data.get('description')}',
-                    status = '{new_data.get('status')}',
+                    status = {new_data.get('status')},
                     price = {new_data.get('price')},
                     category_id = (SELECT id FROM categories WHERE name = '{new_data.get('category')}'),
                     promotion_id = (

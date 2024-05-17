@@ -6,12 +6,12 @@ from flask_jwt_extended import (
 )
 product_image_model = ProductImageModel()
 
-@app.route("/api/admin/product_image/admin", methods=["GET"])
+@app.route("/api/admin/product_image", methods=["GET"])
 @jwt_required()
 def get_dataProductImage():
     return product_image_model.get_data()
 
-@app.route("/api/admin/product_image/admin", methods=["POST"])
+@app.route("/api/admin/product_image", methods=["POST"])
 @jwt_required()
 def add_dataProductImage():
     print("adasdasdasdad ", request.form)
