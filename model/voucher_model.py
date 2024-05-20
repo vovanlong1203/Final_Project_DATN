@@ -14,7 +14,7 @@ def connect_to_database():
     except mysql.connector.Error as err:
         print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
         return None
-    
+
 class DiscountType(Enum):
     amount = 'AMOUNT'
     percentage = 'PERCENTAGE'
@@ -26,6 +26,7 @@ class VoucherType(Enum):
 
 class Voucher:
     def __init__(self, id=None, minimum_purchase_amount=None, usage_count=None, usage_limit=None, voucher_value=None, end_at=None, start_at=None, code=None, discount_type=None, voucher_type = None,maxDiscountValue = None, active=None):
+
         self.id = id
         self.minimum_purchase_amount = minimum_purchase_amount
         self.usage_count = usage_count
@@ -38,6 +39,7 @@ class Voucher:
         self.voucher_type = voucher_type
         self.maxDiscountValue = maxDiscountValue
         self.active = active
+
         
     def to_dict_mobile(self):
         return {
@@ -174,6 +176,7 @@ class VoucherModel:
     def get_voucher_by_type(self):
         try:
             voucherType = request.args.get("voucherType")
+
             query = f"""SELECT * FROM vouchers WHERE voucher_type = '{voucherType}' and active = 1"""
             self.cur.execute(query)
             results = self.cur.fetchall()
@@ -196,6 +199,7 @@ class VoucherModel:
                 vouchers.append(voucher.to_dict_mobile())
             return jsonify({
                 "content":vouchers
-            })
+
+            }),200
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")

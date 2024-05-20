@@ -40,3 +40,20 @@ def update_user(id):
     result = individual_model.update_user(request.json, id )
 
     return result
+
+
+@app.route("/api/auth/forgot-password", methods=['POST'])
+def SenOTP(): 
+    try:
+        username = request.args.get("username")
+        return  individual_model.for_got_password(username)
+
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        return jsonify({'message': 'Lỗi không nhận được username'}), 500
+
+
+@app.route("/api/auth/verify-otp", methods=['POST'])
+def VerifyOTP(): 
+    return  individual_model.verify_otp()
+

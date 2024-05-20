@@ -60,7 +60,7 @@ def route_protected():
 
 @app.route("/update/<int:id>", methods=['POST'])
 @jwt_required()
-def update_user_1(id): 
+def update_user(id): 
     if request.method == 'POST':
         file = request.files['url_image']
         filename = secure_filename(file.filename)
@@ -76,3 +76,7 @@ def update_user_1(id):
 
     result = user_model.update(request.json, id, filename)
     return result
+@app.route("/user/<int:id>", methods=['GET'])
+@jwt_required()
+def detail_user(id):
+    return user_model.get_user_by_id(id)

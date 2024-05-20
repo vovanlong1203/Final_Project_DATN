@@ -611,6 +611,7 @@ class ProductModel:
             """, (pr_id,))
 
             result = self.cur.fetchall()
+            self.con.commit()
             product_detail = ProductDetail.from_database_result(result)
             self.con.commit()
             if product_detail:
