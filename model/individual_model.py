@@ -14,7 +14,7 @@ from email.message import EmailMessage
 import os
 
 
-cred = credentials.Certificate("E:\ROBOTICS\demo1-55087-firebase-adminsdk-avom5-fc97a6fb42.json")
+cred = credentials.Certificate("demo1-55087-firebase-adminsdk-avom5-fc97a6fb42.json")
 firebase_admin.initialize_app(cred, {'storageBucket': 'demo1-55087.appspot.com'
         })
 bucket = storage.bucket()
