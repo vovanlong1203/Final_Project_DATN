@@ -3,6 +3,7 @@ import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
 from datetime import datetime
+from datetime import datetime
 def connect_to_database():
     try:
         con = mysql.connector.connect(
@@ -47,11 +48,12 @@ class Voucher:
             'usageLimit': self.usage_limit,
             'discountValue': self.voucher_value,
             'expiryDate': self.end_at.strftime('%H:%M:%S %d-%m-%Y'),
+            'expiryDate': self.end_at.strftime('%H:%M:%S %d-%m-%Y'),
             'start_at': self.start_at,
             'code': self.code,
             'discountType': self.discount_type,
             'voucherType' : self.voucher_type,
-            'active' : bool(self.active),
+            'active' : bool(self.active) ,
             'maxDiscountValue' : self.maxDiscountValue
         }
     def to_dict(self):
@@ -182,6 +184,7 @@ class VoucherModel:
                 voucher =Voucher(
                     id=result['id'],
                     minimum_purchase_amount=result['minimum_purchase_amount'],
+                    minimum_purchase_amount=result['minimum_purchase_amount'],
                     usage_count=result['usage_count'],
                     usage_limit=result['usage_limit'],
                     voucher_value=result['voucher_value'],
@@ -189,13 +192,17 @@ class VoucherModel:
                     start_at=result['start_at'],
                     code=result['code'],
                     discount_type=result['discount_type'],
+                    discount_type=result['discount_type'],
                     voucher_type=result['voucher_type'],
+                    maxDiscountValue=result['maxDiscountValue'],
+                    active= result['active']
                     maxDiscountValue=result['maxDiscountValue'],
                     active= result['active']
                 )
                 vouchers.append(voucher.to_dict_mobile())
             return jsonify({
                 "content":vouchers
-            })
+
+            }),200
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")

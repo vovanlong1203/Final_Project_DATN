@@ -297,6 +297,7 @@ class ProductModel:
                         
             self.cur.execute(query)
             result = self.cur.fetchall()
+            self.con.commit()
             print("result: ", result)
             lst = []
             for item in result:
@@ -322,7 +323,7 @@ class ProductModel:
                 SET 
                     name = '{new_data.get('name')}',
                     description = '{new_data.get('description')}',
-                    status = '{new_data.get('status')}',
+                    status = {new_data.get('status')},
                     price = {new_data.get('price')},
                     category_id = (SELECT id FROM categories WHERE name = '{new_data.get('category')}'),
                     promotion_id = (
@@ -612,7 +613,7 @@ class ProductModel:
             result = self.cur.fetchall()
             self.con.commit()
             product_detail = ProductDetail.from_database_result(result)
-
+            self.con.commit()
             if product_detail:
                 return jsonify(product_detail.to_dict())
             else:
