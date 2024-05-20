@@ -9,13 +9,11 @@ from werkzeug.utils import secure_filename
 import firebase_admin
 from firebase_admin import credentials, storage
 import requests
+import configs.firebase_config
 
-# Cấu hình Firebase
-cred = credentials.Certificate("demo1-55087-firebase-adminsdk-avom5-fc97a6fb42.json")
-firebase_admin.initialize_app(cred, {
-    'storageBucket': 'demo1-55087.appspot.com'
-})
-bucket = storage.bucket()
+
+
+bucket = configs.firebase_config.get_bucket()
 
 def connect_to_database():
     try:

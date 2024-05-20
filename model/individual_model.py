@@ -10,14 +10,11 @@ from mysql.connector import Error
 from datetime import datetime
 from datetime import timedelta
 from email.message import EmailMessage
-
+import configs.firebase_config
 import os
 
 
-cred = credentials.Certificate("demo1-55087-firebase-adminsdk-avom5-fc97a6fb42.json")
-firebase_admin.initialize_app(cred, {'storageBucket': 'demo1-55087.appspot.com'
-        })
-bucket = storage.bucket()
+bucket = configs.firebase_config.get_bucket()
 
 def connect_to_database():
     try:
