@@ -80,3 +80,8 @@ def update_user(id):
 @jwt_required()
 def detail_user(id):
     return user_model.get_user_by_id(id)
+
+@app.route("/api/admin/user", methods=["GET"])
+@jwt_required()
+def get_count_user(): 
+    return user_model.get_count_user()

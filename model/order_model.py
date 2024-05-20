@@ -173,4 +173,51 @@ class OrderModel:
                 "error" : str(e) 
             })
     
-                
+    def get_all_order(self):
+        try:
+            query = f"""
+                SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status 
+                FROM orders o
+                INNER JOIN users u
+                ON o.user_id = u.id
+            """          
+            self.cur.execute(query)
+            results = self.cur.fetchall()
+            self.con.commit()
+            
+            list_order = []
+            
+            for result in results:
+                list_order.append({
+                    "id": result['id'],
+                    "customer": result['full_name'],
+                    "total_amount": result['total_amount'],
+                    "payment_method": result['payment_method'],
+                    "phone_number": result['phone_number'],
+                    "shipping_address": result['shipping_address'],
+                    "status": result['status']
+                })
+            
+            print(list_order)
+            return jsonify(list_order)
+        except Exception as e:
+            print("error", str(e))
+            return jsonify({
+                "msg": str(e)
+            })
+            
+    def update_status_order(self, id, data):
+        try:
+            query = f"""
+                UPDATE orders
+                SET status = %s
+                WHERE id = %s
+            """
+            self.cur.execute(query, (data['status'], id))
+            self.con.commit()
+            return jsonify({"msg": "Order status updated successfully"})
+        except Exception as e:
+            print("error", str(e))
+            return jsonify({
+                "msg": str(e)
+            })

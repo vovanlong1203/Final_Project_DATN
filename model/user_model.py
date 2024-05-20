@@ -369,4 +369,13 @@ class UserModel:
             return jsonify({
                 "message" : "error"
             })
-
+    def get_count_user(self):
+        try:
+            query = "SELECT * FROM users"
+            self.cur.execute(query)
+            
+            result = self.cur.fetchall()
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({'msg': str(e)})

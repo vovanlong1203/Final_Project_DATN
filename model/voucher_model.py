@@ -67,8 +67,10 @@ class Voucher:
             'start_at': self.start_at,
             'code': self.code,
             'discount_type': self.discount_type,
-            'voucher_type' : self.voucher_type
-        }
+            'voucher_type' : self.voucher_type,
+            'maxDiscountValue' : self.maxDiscountValue,
+            'active' : (self.active)
+        } 
         
 class VoucherModel:
     def __init__(self):
@@ -95,7 +97,10 @@ class VoucherModel:
                                   end_at=result['end_at'],
                                   start_at=result['start_at'],
                                   code=result['code'],
-                                  discount_type=result['discount_type']
+                                  discount_type=result['discount_type'],
+                                  voucher_type=result['voucher_type'],
+                                  maxDiscountValue=result['maxDiscountValue'],
+                                  active=result['active']
                                 )
                 list_voucher.append(voucher.to_dict())
             self.con.commit()
@@ -111,8 +116,8 @@ class VoucherModel:
     def add_voucher(self, data):
         try:
             query = f"""
-                INSERT INTO vouchers (minimum_purchase_amount, usage_count, usage_limit, voucher_value, end_at, start_at, code, discount_type)
-                VALUES ({data['minimum_purchase_amount']}, {data['usage_count']}, {data['usage_limit']}, {data['voucher_value']}, '{data['end_at']}', '{data['start_at']}', '{data['code']}', '{data['discount_type']}')
+                INSERT INTO vouchers (minimum_purchase_amount, usage_count, usage_limit, voucher_value, end_at, start_at, code, discount_type, voucher_type, maxDiscountValue, active)
+                VALUES ({data['minimum_purchase_amount']}, {data['usage_count']}, {data['usage_limit']}, {data['voucher_value']}, '{data['end_at']}', '{data['start_at']}', '{data['code']}', '{data['discount_type']}','{data['voucher_type']}', '{data['maxDiscountValue']}', {data['active']})
             """
             self.cur.execute(query)
             self.con.commit()

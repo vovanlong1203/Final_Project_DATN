@@ -15,3 +15,13 @@ def get_all_size1():
 @jwt_required()
 def order_products():
     return size_model.order_product(request.json)
+
+@app.route("/api/admin/orders", methods=["GET"])
+@jwt_required()
+def get_all_order():
+    return size_model.get_all_order()
+
+@app.route("/api/admin/orders/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_status_order(id):
+    return size_model.update_status_order(id, request.json)
