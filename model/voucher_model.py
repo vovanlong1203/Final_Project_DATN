@@ -184,7 +184,6 @@ class VoucherModel:
                 voucher =Voucher(
                     id=result['id'],
                     minimum_purchase_amount=result['minimum_purchase_amount'],
-                    minimum_purchase_amount=result['minimum_purchase_amount'],
                     usage_count=result['usage_count'],
                     usage_limit=result['usage_limit'],
                     voucher_value=result['voucher_value'],
@@ -192,10 +191,7 @@ class VoucherModel:
                     start_at=result['start_at'],
                     code=result['code'],
                     discount_type=result['discount_type'],
-                    discount_type=result['discount_type'],
                     voucher_type=result['voucher_type'],
-                    maxDiscountValue=result['maxDiscountValue'],
-                    active= result['active']
                     maxDiscountValue=result['maxDiscountValue'],
                     active= result['active']
                 )

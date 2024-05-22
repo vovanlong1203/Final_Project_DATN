@@ -57,3 +57,6 @@ def SenOTP():
 def VerifyOTP(): 
     return  individual_model.verify_otp()
 
+@app.route("/api/auth/reset-password", methods = ['PUT'] )
+def reset_password():
+    return individual_model.reset_password(request.json)

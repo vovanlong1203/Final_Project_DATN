@@ -12,6 +12,17 @@ from datetime import timedelta
 from email.message import EmailMessage
 import configs.firebase_config
 import os
+from flask_jwt_extended import (
+    create_access_token, 
+    create_refresh_token, 
+    get_jwt_identity,
+    set_access_cookies,
+    set_refresh_cookies,
+    unset_jwt_cookies,
+    jwt_required,
+    unset_access_cookies, 
+    get_jwt
+)
 
 
 bucket = configs.firebase_config.get_bucket()
@@ -207,6 +218,7 @@ class IndividualModel:
                     "message": "Tên người dùng không tồn tại."
                 }), 401
             else:
+                print(user['gmail'])
                 try:
                     otp = self.send_OTP(user['gmail'])
                     try:
@@ -269,21 +281,69 @@ class IndividualModel:
             expiration_time_str=otp_info['expiration_time']
             stored_otp = otp_info['otp_value']
 
-            # Kiểm tra xem thời gian hiện tại có nằm trong khoảng thời gian hợp lệ không
             print(expiration_time_str)
             print(stored_otp)
             expiration_time = datetime.strptime(str(expiration_time_str), '%Y-%m-%d %H:%M:%S.%f')
+
             current_datetime = datetime.now()
+            print(expiration_time)
+            print(current_datetime)
             if current_datetime > expiration_time:
                 return jsonify({"message": "OTP đã hết hạn."}), 400
 
-            # Kiểm tra xem OTP được gửi lên có khớp với OTP lưu trữ không
+    
             if otp != stored_otp:
                 return jsonify({"message": "OTP không hợp lệ."}), 400
 
-            # Nếu tất cả đều hợp lệ, trả về phản hồi thành công
-            return jsonify({"message": "OTP hợp lệ."}), 200
+            id = int(user_id['id'])
+            access_token = create_access_token(identity=id)
+            refresh_token = create_refresh_token(identity=id)
+            
+            current_datetime = datetime.now()
+            new_datetime = current_datetime + timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_token = f"UPDATE token_refresh SET \
+                            expiration_date = '{formatted_datetime}', \
+                            token = '{refresh_token}' \
+                            WHERE user_id = {id} "
+            print(query_token)
+            self.cur.execute(query_token)
+            self.con.commit()
+            
+
+            return jsonify({"data":{
+                "message": "OTP hợp lệ.",
+                "token":refresh_token
+            }
+                }), 200
 
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
             return jsonify({"message": "Có lỗi khi xác minh OTP."}), 500
+    def reset_password(self,data):
+        try:
+            query_find_userid= f""" 
+                SELECT user_id FROM token_refresh
+                WHERE token = '{data["token"]}'
+            """
+            print(query_find_userid)
+            self.cur.execute(query_find_userid)
+          
+            user_id = self.cur.fetchone()['user_id']
+            self.con.commit()
+            print(user_id)
+
+            query_set_pw = f"""
+                UPDATE users SET password ='{data["newPassword"]}'
+                WHERE id = {user_id}
+            """
+            self.cur.execute(query_set_pw)
+            self.con.commit()
+            return jsonify({}),200
+            
+        except mysql.connector.Error as err:
+            print(f"lỗi: {err}")
+            return jsonify({
+                err
+            }),500
+
