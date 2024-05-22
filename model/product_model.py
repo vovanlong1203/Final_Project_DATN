@@ -3,6 +3,7 @@ import mysql.connector
 from configs.config import dbconfig
 from typing import List
 from datetime import date
+import time
 
 def connect_to_database():
     try:
@@ -361,11 +362,11 @@ class ProductModel:
     def search_products(self):
         try:
             keyword = request.args.get("keyword")
-            min_price = request.args.get("min_price")
-            max_price = request.args.get("max_price")
+            min_price = request.args.get("minprice")
+            max_price = request.args.get("maxprice")
             category = request.args.get("category")
             print("key:",keyword,"   min:" ,min_price,"    max:",max_price,"    category:" ,category)
-            if min_price ==None and max_price ==None:
+            if (min_price ==None and max_price ==None) or (min_price =="" and max_price == "") :
                 min_price = 0
                 max_price = 99999999999999
 

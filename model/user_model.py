@@ -102,19 +102,19 @@ class UserModel:
                 print("Tên người dùng đã tồn tại.")
                 return jsonify({
                     "message" : "user is exist"
-                })
+                }), 400
             query_find_gmail = f"SELECT * FROM users WHERE gmail = '{data['gmail']}'"
             self.cur.execute(query_find_gmail)
             if self.cur.fetchone():
                 print("gmail đã tồn tại.")
                 return jsonify({
                     "message" : "gmail is exist"
-                })
+                }), 400
             
             current_datetime = datetime.datetime.now()
             print("data: ", data)
             formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
-            query_insert_user = f"INSERT INTO users (is_enabled, is_locked, create_at, update_at, account_provider, full_name, gender, gmail, password, phone_number, role, url_image, username) VALUES (%s, %s, NOW(), NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            query_insert_user = f"INSERT INTO users (is_enabled, is_locked, create_at, update_at, account_provider, full_name, gmail, password, role, username) VALUES (%s, %s, NOW(), NOW(), %s, %s, %s, %s, %s, %s)"
             user = User(
                 is_enabled=1,
                 is_locked=0,
@@ -122,12 +122,9 @@ class UserModel:
                 update_at=formatted_datetime,
                 account_provider=AccountProvider.LOCAL.value,
                 full_name=data.get('full_name'),
-                gender=data.get('gender'),
                 gmail=data.get('gmail'),
                 password=data.get('password'),
-                phone_number=data.get('phone_number'),
                 role= Role.USER.value,
-                url_image=data.get('url_image'),
                 username=data.get('username')
             )
             user_data = user.to_dict()
@@ -136,12 +133,9 @@ class UserModel:
                 user_data['is_locked'],
                 user_data['account_provider'],
                 user_data['full_name'],
-                user_data['gender'],
                 user_data['gmail'],
                 user_data['password'],
-                user_data['phone_number'],
                 user_data['role'],
-                user_data['url_image'],
                 user_data['username']
             )
             self.cur.execute(query_insert_user, user_values)
@@ -172,8 +166,8 @@ class UserModel:
         except mysql.connector.Error as err:
             print(f"Lỗi: {err}")
             return jsonify({
-                'msg': err
-            })
+                'msg': str(err)
+            }) , 500
                 
     # input: Authorization: Bearer token
     def get_all_user(self):
@@ -208,7 +202,7 @@ class UserModel:
             print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
             return jsonify({
                 "message": "error"
-            })
+            }), 500
     
     # input: username, password
     def login(self, data):
@@ -263,7 +257,7 @@ class UserModel:
             print(f"Lỗi: {err}")
             return jsonify({
                 'msg': err
-            })
+            }) , 500
     
     def login_admin(self, data):
         try:
@@ -319,7 +313,7 @@ class UserModel:
             print(f"Lỗi: {err}")
             return jsonify({
                 'msg': str(err)
-            }) 
+            }) , 500
 
     def logout(self):
         response = jsonify({
@@ -375,7 +369,68 @@ class UserModel:
             self.cur.execute(query)
             
             result = self.cur.fetchall()
-            return jsonify(result)
+            return jsonify(result) , 200
             
         except Exception as e:
             return jsonify({'msg': str(e)})
+
+    def login_by_gg(self):
+        try:
+            gmail = request.args.get("gmail")
+            fullname = request.args.get("fullName")
+            urlImage = request.args.get("urlImage")
+            
+            print(gmail,fullname,urlImage)
+            
+            query_find_user = f"SELECT * FROM users WHERE gmail = '{gmail}'"
+            self.cur.execute(query_find_user)
+            user = self.cur.fetchone()
+            if not user:
+                print("Tên người dùng không tồn tại.")
+                current_datetime = datetime.datetime.now()
+                new_datetime = current_datetime + datetime.timedelta(days=30)
+                formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+                query_insert_gg = f"""
+                    INSERT INTO users (is_enabled, is_locked, create_at, update_at, account_provider, full_name, url_image, gmail, username) 
+                    VALUES (1, 0, '{current_datetime}','{current_datetime}', 'GOOGLE', '{fullname}', '{urlImage}', '{gmail}', '{gmail}')
+                """
+                self.cur.execute(query_insert_gg)
+                self.con.commit()
+                user_id = self.cur.lastrowid
+            else:
+                user_id = user['id']
+                
+            access_token = create_access_token(identity=user_id)
+            refresh_token = create_refresh_token(identity=user_id)
+            
+            current_datetime = datetime.datetime.now()
+            new_datetime = current_datetime + datetime.timedelta(days=30)
+            formatted_datetime = new_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_token = f"UPDATE token_refresh SET \
+                            expiration_date = '{formatted_datetime}', \
+                            token = '{refresh_token}' \
+                            WHERE user_id = {user_id}"
+            self.cur.execute(query_token)
+            self.con.commit()
+            
+            query_role = f"SELECT role from users WHERE id = {user_id}"
+            self.cur.execute(query_role)
+            result = self.cur.fetchone()
+            self.con.commit()
+            
+            response = jsonify({
+                "message": "Đăng nhập thành công.",
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user_id": user_id,
+                "role" : result['role']
+            })
+            
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            return response , 200
+        except mysql.connector.Error as err:
+            print(f"Lỗi: {err}")
+            return jsonify({
+                'msg': err
+            })

@@ -1,8 +1,31 @@
-from flask import jsonify,request
+from app import app
+from flask import jsonify, request, redirect
 import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
+import hashlib
+import requests
+import string
+import urllib.parse
+import random
+import datetime
+import hmac
+import time
+import socket
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
 
+def generate_random_string(length):
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
+def hmac_sha512(key, data):
+    return hmac.new(key.encode('utf-8'), data.encode('utf-8'), hashlib.sha512).hexdigest()
+
+vnp_TmnCode = 'QXYFI1HX'  # Mã website của bạn trên VNPay
+vnp_HashSecret = 'QJ48ZZ7RT26JA00W08KUQHFCGTWD649H'  # Chuỗi bí mật hash
+vnp_Url = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # URL của VNPay (sử dụng sandbox để test)
+vnp_ReturnUrl = f'http://{local_ip}:5000/vnpay_return'
 
 def connect_to_database():
     try:
@@ -52,7 +75,7 @@ class OrderModel:
             return total_discount_amount
         except Exception as e:
             print("msg: ", str(e))
-            return jsonify(str(e))
+            return 0
             
     def get_price_product(self, id):
         query = f"""
@@ -75,12 +98,13 @@ class OrderModel:
         self.cur.execute(query)
         result = self.cur.fetchone()
         id = result['id']
-        
+        time.sleep(0.1)
         return id
     
     def order_product(self, data):
         try:
             cart_item = data['orderItems']
+            urlPayment = None
             print("data: ", data)
             total_amount = 0
             order_id = None
@@ -91,6 +115,7 @@ class OrderModel:
                 print("discount_amount: ", discount_amount)
                 print("total_amount: ", total_amount)
             
+            totalProductAmount = total_amount
             totalAmount = total_amount + data['feeShip'] - data['discountAmount']
             
             
@@ -104,31 +129,39 @@ class OrderModel:
             discountAmount = data['discountAmount']
             voucherId = str(data['idsVoucher'])
             paymentMethod = data['paymentMethod']
+            shippingFee = data['feeShip']
+            discountShippingFee = data['discountShippingFee']
             if data['paymentMethod'] == "CASH":
                 status = "CONFIRMED"
                 query_order = f"""
-                    INSERT INTO orders (total_amount, discount_amount, user_id, voucher_id, order_date, payment_method, phone_number, shipping_address, status)
-                    VALUES ({totalAmount}, {discountAmount}, {userId}, '{voucherId}', NOW(), '{paymentMethod}', '{phoneNumber}', '{shippingAddress}', '{status}')
+                    INSERT INTO orders (total_amount, discount_amount, user_id, voucher_id, order_date, payment_method, phone_number, shipping_address, status, totalProductAmount, shippingFee, discountShippingFee)
+                    VALUES ({totalAmount}, {discountAmount}, {userId}, '{voucherId}', NOW(), '{paymentMethod}', '{phoneNumber}', '{shippingAddress}', '{status}', {totalProductAmount}, {shippingFee}, {discountShippingFee})
                 """            
                 self.cur.execute(query_order)
                 self.con.commit()
                 order_id = self.cur.lastrowid
-                print("order_id: ", order_id)
             
-            # if data['paymentMethod'] == "VNPAY":
-            #     query_order = f"""
-                
-            #     """
+            elif data['paymentMethod'] == "VNPAY":
+                urlPayment = self.create_payment(totalAmount)
+                status = "UNCONFIRMED"
+                query_order = f"""
+                    INSERT INTO orders (total_amount, discount_amount, user_id, voucher_id, order_date, payment_method, phone_number, shipping_address, status, totalProductAmount, shippingFee, discountShippingFee, urlPayment)
+                    VALUES ({totalAmount}, {discountAmount}, {userId}, '{voucherId}', NOW(), '{paymentMethod}', '{phoneNumber}', '{shippingAddress}', '{status}', {totalProductAmount}, {shippingFee}, {discountShippingFee}, '{urlPayment}')
+                """
+                self.cur.execute(query_order)
+                self.con.commit()
+                order_id = self.cur.lastrowid
                 
             for item in cart_item:
                 productId = item['productId']
                 quantity = item['quantity']
+                size = item['size']
                 price_product = self.get_price_product(productId)
                 query_order_item = """
-                    INSERT INTO order_items(order_id, product_id, quantity, unit_price)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO order_items(order_id, product_id, quantity, unit_price, sizeType, rate)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 """
-                self.cur.execute(query_order_item, (order_id, productId, quantity, price_product))
+                self.cur.execute(query_order_item, (order_id, productId, quantity, price_product, size, 0))
                 self.con.commit()
             
             for item in data['idsVoucher']:
@@ -165,13 +198,13 @@ class OrderModel:
                 self.con.commit()
                 
             return jsonify({
-                "msg": "order successfully"
-            })
+                "urlPayment" : urlPayment
+            }), 200
         except Exception as e:
             print("error: ", str(e))
             return jsonify({
                 "error" : str(e) 
-            })
+            }), 500
     
     def get_all_order(self):
         try:
@@ -199,6 +232,7 @@ class OrderModel:
                 })
             
             print(list_order)
+            # time.sleep(0.2)
             return jsonify(list_order)
         except Exception as e:
             print("error", str(e))
@@ -221,3 +255,213 @@ class OrderModel:
             return jsonify({
                 "msg": str(e)
             })
+            
+    def get_list_order_item(self, orderId):
+        try:
+            query = f"""
+                SELECT * FROM order_items 
+                WHERE order_id = {orderId}
+            """        
+            
+            self.cur.execute(query)
+            results = self.cur.fetchall()
+            self.con.commit()
+            
+            orderItemList = []
+            
+            for item in results:
+                orderItemList.append({
+                    "id" : item['id'],
+                    "quantity": item['quantity'],
+                    "unitPrice": item['unit_price'],
+                    "sizeType": item['sizeType'],
+                    "productId": item['product_id'],
+                    "orderId": item['order_id'],
+                    "rate": True if item['rate'] == 1 else False
+                })
+            return orderItemList
+        except Exception as e:
+            print("error: ", str(e))
+            return []
+    
+    
+    
+    def get_order_by_user(self, userId):
+        try:
+            orderStatus = request.args.get("orderStatus")
+            print("orderStatus: ", orderStatus)
+            print("user id: ", userId)
+            query = """
+                SELECT ord.*, ur.full_name FROM orders ord  
+                LEFT JOIN users ur
+                ON ord.user_id = ur.id
+                WHERE ord.user_id = %s AND ord.status = %s
+            """
+            
+            self.cur.execute(query, (userId, orderStatus))
+            results = self.cur.fetchall()
+            self.con.commit()
+            time.sleep(0.5)
+            orderList = []
+            
+            for item in results:
+                
+                orderList.append({
+                    "id" : item['id'],
+                    "orderDate": item['order_date'],
+                    "orderStatus": item['status'],
+                    "paymentMethod": item['payment_method'],
+                    "name": item['full_name'],
+                    "shippingAddress": item['shipping_address'],
+                    "phoneNumber": item['phone_number'],
+                    "note": item['note'],
+                    "totalPayment": item['total_amount'],
+                    "totalProductAmount": item['totalProductAmount'],
+                    "shippingFee": item['shippingFee'],
+                    "discountAmount": item['discount_amount'],
+                    "discountShippingFee": item['discountShippingFee'],
+                    "orderItems": self.get_list_order_item(item['id']),
+                    "userId": item['user_id'],
+                    "urlPayment": item['urlPayment']
+                })
+            print("orderList: ", orderList)
+            json = {
+                 "content":orderList
+            }
+            return jsonify(json)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify("msg: ", str(e))
+
+    def create_payment(self, totalAmount):
+        vnp_TxnRef = generate_random_string(6)
+        vnp_OrderInfo = 'Thanh toan don hang'
+        vnp_OrderType = 'billpayment'
+        vnp_Amount = int(totalAmount * 100)  
+        vnp_Locale = 'vn'
+        vnp_IpAddr = request.remote_addr
+
+        # Tạo ngày giờ hiện tại theo múi giờ "Etc/GMT+7"
+        cld = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
+        vnp_CreateDate = cld.strftime("%Y%m%d%H%M%S")
+        cld += datetime.timedelta(minutes=15)
+        vnp_ExpireDate = cld.strftime("%Y%m%d%H%M%S")
+
+        inputData = {
+            'vnp_Version': '2.1.0',
+            'vnp_Command': 'pay',
+            'vnp_TmnCode': vnp_TmnCode,
+            'vnp_Amount': vnp_Amount,
+            'vnp_CurrCode': 'VND',
+            'vnp_TxnRef': vnp_TxnRef,
+            'vnp_OrderInfo': vnp_OrderInfo,
+            'vnp_OrderType': vnp_OrderType,
+            'vnp_Locale': vnp_Locale,
+            'vnp_ReturnUrl': vnp_ReturnUrl,
+            'vnp_IpAddr': vnp_IpAddr,
+            'vnp_CreateDate': vnp_CreateDate,
+            'vnp_ExpireDate': vnp_ExpireDate
+        }
+
+        sortedInputData = sorted(inputData.items())
+        queryString = urllib.parse.urlencode(sortedInputData)
+
+        hashData = '&'.join([f'{k}={urllib.parse.quote_plus(str(v))}' for k, v in sortedInputData])
+        vnp_SecureHash = hmac_sha512(vnp_HashSecret, hashData)
+
+        paymentUrl = f"{vnp_Url}?{queryString}&vnp_SecureHashType=HMACSHA512&vnp_SecureHash={vnp_SecureHash}"
+
+        print(f"paymentUrl: {paymentUrl}")
+        print(f"inputData: {inputData}")
+        print(f"hashData: {hashData}")
+        print(f"vnp_SecureHash: {vnp_SecureHash}")
+
+        return paymentUrl
+
+    def get_order_detail(self, orderId):
+        try:
+            print("user id: ", orderId)
+            query = """
+                SELECT ord.*, ur.full_name FROM orders ord  
+                LEFT JOIN users ur
+                ON ord.user_id = ur.id
+                WHERE ord.id = %s
+            """
+            
+            self.cur.execute(query, (orderId,))
+            item = self.cur.fetchone()
+            self.con.commit()
+            print(item)
+            orderDetail = {
+                    "id" : item['id'],
+                    "orderDate": item['order_date'],
+                    "orderStatus": item['status'],
+                    "paymentMethod": item['payment_method'],
+                    "name": item['full_name'],
+                    "shippingAddress": item['shipping_address'],
+                    "phoneNumber": item['phone_number'],
+                    "note": item['note'],
+                    "totalPayment": item['total_amount'],
+                    "totalProductAmount": item['totalProductAmount'],
+                    "shippingFee": item['shippingFee'],
+                    "discountAmount": item['discount_amount'],
+                    "discountShippingFee": item['discountShippingFee'],
+                    "orderItems": self.get_list_order_item(item['id']),
+                    "userId": item['user_id'],
+                    "urlPayment": item['urlPayment']
+                }
+            return jsonify(orderDetail)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify("msg: ", str(e))
+        
+    def update_quantity_item(self, quantity, productId, sizeType):
+        try:
+            query = f"""
+                UPDATE product_size 
+                SET quantity = quantity + {quantity},
+                    quantity_sold = quantity_sold - {quantity}
+                WHERE product_id = {productId} 
+                AND size_id = (
+                    SELECT id FROM sizes WHERE name = '{sizeType}'
+                )
+            """
+            self.cur.execute(query)
+            self.con.commit()
+            return True
+        except Exception as e:
+            print("Error updating item quantity:", str(e))
+            return False
+        
+    def cancel_order(self, orderId):
+        try:
+            status = request.args.get("orderStatus")
+            print("status: ", status)
+            list_order_item = self.get_list_order_item(orderId)
+
+            for item in list_order_item: 
+                quantity = item['quantity']
+                productId = item['productId']
+                sizeType = item['sizeType']
+                print(quantity, productId, sizeType)
+                
+                isCheck = self.update_quantity_item(quantity,productId,sizeType)
+                
+                if isCheck == False:
+                    continue
+            
+            query = """
+                UPDATE orders 
+                SET status = %s
+                WHERE id = %s
+            """
+            self.cur.execute(query, (status, orderId))
+            self.con.commit()
+            
+            return self.get_order_detail(orderId)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg": str(e)
+            })
+    
