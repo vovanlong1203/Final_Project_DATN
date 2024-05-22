@@ -60,7 +60,7 @@ def route_protected():
 
 @app.route("/update/<int:id>", methods=['POST'])
 @jwt_required()
-def update_user(id): 
+def update_user_1(id): 
     if request.method == 'POST':
         file = request.files['url_image']
         filename = secure_filename(file.filename)
@@ -85,3 +85,7 @@ def detail_user(id):
 @jwt_required()
 def get_count_user(): 
     return user_model.get_count_user()
+
+@app.route("/api/auth/verify-gg", methods=["POST"])
+def login_by_gg(): 
+    return user_model.login_by_gg()

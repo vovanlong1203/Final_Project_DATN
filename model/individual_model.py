@@ -130,7 +130,7 @@ class IndividualModel:
 
     def update_user(self, data, id):
         try:
-            current_datetime = datetime.datetime.now()
+            current_datetime = datetime.now()
             formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
             
             # Khởi tạo câu lệnh SQL cơ bản
