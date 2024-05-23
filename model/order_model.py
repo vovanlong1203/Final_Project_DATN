@@ -59,7 +59,6 @@ class OrderModel:
         
     def get_discount_amount_product(self, id):
         try:
-            print("dasdsad: ", id)
             total_discount_amount = 0
             query = f"""
                 SELECT products.id as id, products.name as product, promotions.discount_value as discount_value
@@ -112,16 +111,9 @@ class OrderModel:
                 discount_amount = self.get_discount_amount_product(item['productId'])
                 price_product = self.get_price_product(item['productId'])
                 total_amount += (price_product * item['quantity']) - (discount_amount *item['quantity'])
-                print("discount_amount: ", discount_amount)
-                print("total_amount: ", total_amount)
             
             totalProductAmount = total_amount
             totalAmount = total_amount + data['feeShip'] - data['discountAmount']
-            
-            
-            print("data['discount_amount']: ", data['discountAmount'])
-            print("data['discount_amount']: ", data['discountAmount'])
-            print("", data['idsVoucher'])
             
             phoneNumber = data['phoneNumber']
             shippingAddress = data['shippingAddress']
@@ -209,7 +201,7 @@ class OrderModel:
     def get_all_order(self):
         try:
             query = f"""
-                SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status 
+                SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date
                 FROM orders o
                 INNER JOIN users u
                 ON o.user_id = u.id
@@ -228,17 +220,16 @@ class OrderModel:
                     "payment_method": result['payment_method'],
                     "phone_number": result['phone_number'],
                     "shipping_address": result['shipping_address'],
-                    "status": result['status']
+                    "status": result['status'],
+                    "order_date": result['order_date']
                 })
             
-            print(list_order)
-            # time.sleep(0.2)
             return jsonify(list_order)
         except Exception as e:
             print("error", str(e))
             return jsonify({
                 "msg": str(e)
-            })
+            }) , 500
             
     def update_status_order(self, id, data):
         try:
@@ -254,7 +245,7 @@ class OrderModel:
             print("error", str(e))
             return jsonify({
                 "msg": str(e)
-            })
+            }) , 500
             
     def get_list_order_item(self, orderId):
         try:
@@ -289,8 +280,6 @@ class OrderModel:
     def get_order_by_user(self, userId):
         try:
             orderStatus = request.args.get("orderStatus")
-            print("orderStatus: ", orderStatus)
-            print("user id: ", userId)
             query = """
                 SELECT ord.*, ur.full_name FROM orders ord  
                 LEFT JOIN users ur
@@ -324,14 +313,13 @@ class OrderModel:
                     "userId": item['user_id'],
                     "urlPayment": item['urlPayment']
                 })
-            print("orderList: ", orderList)
             json = {
                  "content":orderList
             }
             return jsonify(json)
         except Exception as e:
             print("error: ", str(e))
-            return jsonify("msg: ", str(e))
+            return jsonify("msg: ", str(e)) , 500
 
     def create_payment(self, totalAmount):
         vnp_TxnRef = generate_random_string(6)
@@ -371,16 +359,10 @@ class OrderModel:
 
         paymentUrl = f"{vnp_Url}?{queryString}&vnp_SecureHashType=HMACSHA512&vnp_SecureHash={vnp_SecureHash}"
 
-        print(f"paymentUrl: {paymentUrl}")
-        print(f"inputData: {inputData}")
-        print(f"hashData: {hashData}")
-        print(f"vnp_SecureHash: {vnp_SecureHash}")
-
         return paymentUrl
 
     def get_order_detail(self, orderId):
         try:
-            print("user id: ", orderId)
             query = """
                 SELECT ord.*, ur.full_name FROM orders ord  
                 LEFT JOIN users ur
@@ -413,7 +395,7 @@ class OrderModel:
             return jsonify(orderDetail)
         except Exception as e:
             print("error: ", str(e))
-            return jsonify("msg: ", str(e))
+            return jsonify("msg: ", str(e)) , 500
         
     def update_quantity_item(self, quantity, productId, sizeType):
         try:
@@ -436,14 +418,12 @@ class OrderModel:
     def cancel_order(self, orderId):
         try:
             status = request.args.get("orderStatus")
-            print("status: ", status)
             list_order_item = self.get_list_order_item(orderId)
 
             for item in list_order_item: 
                 quantity = item['quantity']
                 productId = item['productId']
                 sizeType = item['sizeType']
-                print(quantity, productId, sizeType)
                 
                 isCheck = self.update_quantity_item(quantity,productId,sizeType)
                 
@@ -463,5 +443,73 @@ class OrderModel:
             print("error: ", str(e))
             return jsonify({
                 "msg": str(e)
-            })
+            }) , 500
     
+    def revenue_statistic_year(self):
+        try:
+            year = request.args.get('year')
+            query = """
+                SELECT 
+                    EXTRACT(MONTH FROM order_date) as month,
+                    SUM(total_amount) as revenue
+                FROM orders
+                WHERE EXTRACT(YEAR FROM order_date) = %s
+                GROUP BY EXTRACT(MONTH FROM order_date)
+                ORDER BY month
+            """
+            self.cur.execute(query, (year,))
+            results = self.cur.fetchall()
+            revenue_data = [{"month": int(result['month']), "revenue": float(result['revenue'])} for result in results]
+
+            self.con.commit()    
+            return jsonify(revenue_data) , 200
+        
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg" : str(e)
+            }) , 500
+        
+    def get_year_order(self):
+        try:
+            query = """
+                SELECT 
+                    extract(YEAR FROM order_date) as years
+                FROM orders
+                GROUP BY extract(YEAR FROM order_date)
+                ORDER BY years 
+            """
+            self.cur.execute(query)
+            results = self.cur.fetchall()
+            self.con.commit()
+
+            years = [result['years'] for result in results]
+            return jsonify(years)            
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg": str(e)
+            }) , 500
+            
+    def get_status_order(self):
+        try:
+            year = request.args.get('year')
+            query = """
+                SELECT 
+                status,
+                count(status) as count
+                FROM orders
+                WHERE EXTRACT(YEAR FROM order_date) = %s
+                GROUP BY status
+            """
+            self.cur.execute(query,(year,))
+            results = self.cur.fetchall()
+            
+            statusList = {result['status'] : result['count'] for result in results}
+            self.con.commit()
+            return jsonify(statusList)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg": str(e)
+            }) , 500

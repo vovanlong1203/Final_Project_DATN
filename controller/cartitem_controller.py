@@ -14,21 +14,30 @@ cartitem_model = CartIemModel()
 @app.route("/api/carts/user/<int:user_id>", methods=["GET"])
 @jwt_required()
 def view_cart_item(user_id):
-    return cartitem_model.view_cart_items(user_id)
+    try:
+        return cartitem_model.view_cart_items(user_id)
+    except Exception as e:
+        return str(e), 500
 
 @app.route("/api/carts/user/<int:user_id>", methods=["POST"])
 @jwt_required()
 def add_product_into_cartitems(user_id):
-    print("user_id: ", user_id)
-    print("json : ", request.json)
-    return cartitem_model.add_product_into_cart_items(user_id, request.json)
-
+    try:
+        print("user_id: ", user_id)
+        print("json : ", request.json)
+        return cartitem_model.add_product_into_cart_items(user_id, request.json)
+    except Exception as e:
+        return str(e), 500
+    
 @app.route("/api/carts/user/<int:user_id>", methods=["DELETE"])
 @jwt_required()
 def delete_product_into_cartitem(user_id):
-    print("user_id: ", user_id)
-    print('json : ', request.json)
-    return cartitem_model.delete_product_in_cart_items(user_id, request.json)
+    try:
+        print("user_id: ", user_id)
+        print('json : ', request.json)
+        return cartitem_model.delete_product_in_cart_items(user_id, request.json)
+    except Exception as e:
+        return str(e), 500
 
 @app.route("/api/carts/user/<int:user_id>/<int:cart_items_id>", methods=["PUT"])
 @jwt_required()

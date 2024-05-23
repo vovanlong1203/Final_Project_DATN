@@ -51,4 +51,17 @@ def vnpay_return():
     else:
         return redirect('/vnpay_return?state=0')
     
-    
+@app.route("/api/admin/orders/revenue", methods=["GET"])
+@jwt_required()
+def revenue_statistic_year():
+    return size_model.revenue_statistic_year()
+
+@app.route("/api/admin/orders/year", methods=["GET"])
+@jwt_required()
+def get_year_order():
+    return size_model.get_year_order()
+
+@app.route("/api/admin/orders/status", methods=["GET"])
+@jwt_required()
+def get_status_order():
+    return size_model.get_status_order()

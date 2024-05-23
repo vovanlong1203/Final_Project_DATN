@@ -9,10 +9,8 @@ from werkzeug.utils import secure_filename
 import firebase_admin
 from firebase_admin import credentials, storage
 import requests
+
 import configs.firebase_config
-
-
-
 bucket = configs.firebase_config.get_bucket()
 
 def connect_to_database():
@@ -108,5 +106,21 @@ class ProductImageModel:
                 "msg": e
             })
             
-    
-        
+    def delete_data(self, id):
+        try:
+            query = """
+                DELETE FROM product_images 
+                WHERE id = %s
+            """ 
+            
+            self.cur.execute(query, (id,))
+            self.con.commit()
+            
+            return jsonify({
+                "msg": "deleted successfully"
+            })
+            
+        except Exception as e:
+            return jsonify({
+                "msg": str(e)
+            })

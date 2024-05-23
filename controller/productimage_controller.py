@@ -14,6 +14,9 @@ def get_dataProductImage():
 @app.route("/api/admin/product_image", methods=["POST"])
 @jwt_required()
 def add_dataProductImage():
-    print("adasdasdasdad ", request.form)
     return product_image_model.add_data(request.form)
 
+@app.route("/api/admin/product_image/<int:id>", methods=['DELETE'])
+@jwt_required()
+def delete_product_images(id):
+    return product_image_model.delete_data(id)

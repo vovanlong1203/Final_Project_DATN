@@ -44,7 +44,7 @@ class CartIemModel:
     def add_product_into_cart_items(self, user_id, data):
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
-        query = f"SELECT * FROM cart_items WHERE product_id = {data['productId']} and size = '{data['size']}'"
+        query = f"SELECT * FROM cart_items WHERE product_id = {data['productId']} and size = '{data['size']}' and user_id = {user_id}"
         self.cur.execute(query)
         results = self.cur.fetchall()
         

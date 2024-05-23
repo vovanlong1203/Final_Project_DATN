@@ -3,7 +3,6 @@ import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
 from datetime import datetime
-from datetime import datetime
 def connect_to_database():
     try:
         con = mysql.connector.connect(
@@ -15,7 +14,7 @@ def connect_to_database():
     except mysql.connector.Error as err:
         print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
         return None
-    
+
 class DiscountType(Enum):
     amount = 'AMOUNT'
     percentage = 'PERCENTAGE'
@@ -27,6 +26,7 @@ class VoucherType(Enum):
 
 class Voucher:
     def __init__(self, id=None, minimum_purchase_amount=None, usage_count=None, usage_limit=None, voucher_value=None, end_at=None, start_at=None, code=None, discount_type=None, voucher_type = None,maxDiscountValue = None, active=None):
+
         self.id = id
         self.minimum_purchase_amount = minimum_purchase_amount
         self.usage_count = usage_count
@@ -39,6 +39,7 @@ class Voucher:
         self.voucher_type = voucher_type
         self.maxDiscountValue = maxDiscountValue
         self.active = active
+
         
     def to_dict_mobile(self):
         return {
@@ -47,7 +48,6 @@ class Voucher:
             'usageCount': self.usage_count,
             'usageLimit': self.usage_limit,
             'discountValue': self.voucher_value,
-            'expiryDate': self.end_at.strftime('%H:%M:%S %d-%m-%Y'),
             'expiryDate': self.end_at.strftime('%H:%M:%S %d-%m-%Y'),
             'start_at': self.start_at,
             'code': self.code,
@@ -104,7 +104,6 @@ class VoucherModel:
                                 )
                 list_voucher.append(voucher.to_dict())
             self.con.commit()
-            print('list_promotion: ',list_voucher)
             return jsonify(list_voucher), 200
             
         except Exception as e:
@@ -181,6 +180,7 @@ class VoucherModel:
     def get_voucher_by_type(self):
         try:
             voucherType = request.args.get("voucherType")
+
             query = f"""SELECT * FROM vouchers WHERE voucher_type = '{voucherType}' and active = 1"""
             self.cur.execute(query)
             results = self.cur.fetchall()
