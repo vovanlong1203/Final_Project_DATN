@@ -437,12 +437,84 @@ class OrderModel:
             """
             self.cur.execute(query, (status, orderId))
             self.con.commit()
-            
             return self.get_order_detail(orderId)
         except Exception as e:
             print("error: ", str(e))
             return jsonify({
                 "msg": str(e)
+            })
+    def get_order_received(self,userId):
+        try:
+            isRate = request.args.get("isRate")
+            rate= 1 if isRate == "true" else 0
+            query = f"""
+                    SELECT order_items.*
+                    FROM order_items
+                    JOIN orders ON order_items.order_id = orders.id
+                    WHERE orders.status = 'DELIVERED' 
+                    and order_items.rate = {rate} 
+                    and orders.user_id = {userId};
+                    """
+            self.cur.execute(query)
+            items = self.cur.fetchall()
+            self.con.commit()
+            count = len(items)
+            print(count)
+            orderItemList = []
+            for item in items:
+                orderItemList.append({
+                    "id" : item['id'],
+                    "quantity": item['quantity'],
+                    "unitPrice": item['unit_price'],
+                    "sizeType": item['sizeType'],
+                    "productId": item['product_id'],
+                    "orderId": item['order_id'],
+                    "rate": True if item['rate'] == 1 else False
+                })
+            print(orderItemList)
+            return jsonify({
+                "content": orderItemList,
+                "numberOfElements": int(count)
+            }),200
+
+        except Exception as e:
+            print(e)
+            return jsonify({
+                "msg": str(e)
+            }),400
+
+
+    def send_comment(self):
+        try:
+            product_id = request.args.get('productId')
+            rate = int(request.args.get('rate'))
+            userId = request.args.get('userId')
+            content = request.args.get('content')
+            orderItemId = int(request.args.get('orderItemId'))
+
+            current_datetime = datetime.datetime.now()
+            formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')
+            query_into_comment = f"""
+                        INSERT INTO comments (product_id,rate,user_id, create_at, content) 
+                                    VALUES ({product_id}, {rate}, {userId},'{formatted_datetime}', '{content}')
+                    """
+            query_set_orderItem = f"""
+                                    UPDATE order_items 
+                                    SET rate = 1
+                                    WHERE id = {orderItemId}
+                                    """
+            self.cur.execute(query_into_comment)
+            self.con.commit()
+            self.cur.execute(query_set_orderItem)
+            self.con.commit()
+            print(query_into_comment)
+            print(query_set_orderItem)
+            return jsonify({
+                "msg": "Đã gửi đánh giá thành công!"
+            }),201
+        except Exception as e:
+            return  jsonify({
+                "msg": e
             }) , 500
     
     def revenue_statistic_year(self):
@@ -513,3 +585,4 @@ class OrderModel:
             return jsonify({
                 "msg": str(e)
             }) , 500
+
