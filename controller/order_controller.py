@@ -51,4 +51,12 @@ def vnpay_return():
     else:
         return redirect('/vnpay_return?state=0')
     
-    
+@app.route("/api/orders/users/<int:userId>/order-items",methods= ['GET'])
+@jwt_required()
+def get_orderItem_received(userId):
+    return size_model.get_order_received(userId)
+
+@app.route("/api/comment",methods = ['POST'])
+@jwt_required()
+def sent_comment():
+    return size_model.send_comment()
