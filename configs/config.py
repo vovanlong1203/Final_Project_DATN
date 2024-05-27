@@ -1,8 +1,7 @@
 dbconfig={
-    # "host":"192.168.10.30",
-     "host":"localhost",
-    "port":"3306",
-    "username":"root",
-    "password":"123456789",
-    "database":"testpbl"
+     "host":"gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    "port":"4000",
+    "username":"4RCNRMUPsj3Gq44.root",
+    "password":"YUAd1l5ZlNEHFfiK",
+    "database":"test"
 }
