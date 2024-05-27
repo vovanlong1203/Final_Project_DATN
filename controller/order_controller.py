@@ -50,7 +50,7 @@ def vnpay_return():
         return redirect('/vnpay_return?state=1')
     else:
         return redirect('/vnpay_return?state=0')
-    
+
 @app.route("/api/orders/users/<int:userId>/order-items",methods= ['GET'])
 @jwt_required()
 def get_orderItem_received(userId):
@@ -60,3 +60,19 @@ def get_orderItem_received(userId):
 @jwt_required()
 def sent_comment():
     return size_model.send_comment()
+
+@app.route("/api/admin/orders/revenue", methods=["GET"])
+@jwt_required()
+def revenue_statistic_year():
+    return size_model.revenue_statistic_year()
+
+@app.route("/api/admin/orders/year", methods=["GET"])
+@jwt_required()
+def get_year_order():
+    return size_model.get_year_order()
+
+@app.route("/api/admin/orders/status", methods=["GET"])
+@jwt_required()
+def get_status_order():
+    return size_model.get_status_order()
+
