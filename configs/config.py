@@ -1,7 +1,7 @@
 dbconfig={
-     "host":"gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-    "port":"4000",
-    "username":"4RCNRMUPsj3Gq44.root",
-    "password":"YUAd1l5ZlNEHFfiK",
-    "database":"test"
+    "host":"monorail.proxy.rlwy.net",
+    "port":"16847",
+    "username":"root",
+    "password":"TUKDxBdWsDaJKAbGmRENytcRcFzIeePJ",
+    "database":"railway"
 }
