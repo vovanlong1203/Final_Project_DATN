@@ -1,7 +1,15 @@
+# dbconfig={
+#     "host":"monorail.proxy.rlwy.net",
+#     "port":"16847",
+#     "username":"root",
+#     "password":"TUKDxBdWsDaJKAbGmRENytcRcFzIeePJ",
+#     "database":"railway"
+# }
 dbconfig={
-    "host":"localhost",
-    "port":"3306",
+    # "host":"192.168.10.30",
+    "host":"monorail.proxy.rlwy.net",
+    "port":"16847",
     "username":"root",
-    "password":"123456789",
-    "database":"pbl6"
+    "password":"TUKDxBdWsDaJKAbGmRENytcRcFzIeePJ",
+    "database":"railway"
 }
