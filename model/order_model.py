@@ -12,6 +12,7 @@ import datetime
 import hmac
 import time
 import socket
+from configs.connection import connect_to_database
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 
@@ -26,18 +27,6 @@ vnp_TmnCode = 'QXYFI1HX'  # Mã website của bạn trên VNPay
 vnp_HashSecret = 'QJ48ZZ7RT26JA00W08KUQHFCGTWD649H'  # Chuỗi bí mật hash
 vnp_Url = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # URL của VNPay (sử dụng sandbox để test)
 vnp_ReturnUrl = f'http://{local_ip}:5000/vnpay_return'
-
-def connect_to_database():
-    try:
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
     
 class Gender(Enum):
     CONFIRMED = 'Đã xác nhận'

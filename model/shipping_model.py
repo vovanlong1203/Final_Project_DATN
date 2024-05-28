@@ -2,19 +2,8 @@ from flask import jsonify,request
 import mysql.connector
 import requests
 from configs.config import dbconfig
+from configs.connection import connect_to_database
 
-def connect_to_database():
-    try:
-
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
 class ShippingModel:
     def __init__(self):
         try:

@@ -2,21 +2,8 @@ from flask import jsonify,request
 import mysql.connector
 from configs.config import dbconfig
 import re
-
-
-def connect_to_database():
-    try:
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
+from configs.connection import connect_to_database
     
-
 def is_valid_vietnamese_name(name):
     if not isinstance(name, str):
         name = str(name)

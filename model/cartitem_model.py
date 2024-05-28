@@ -13,17 +13,7 @@ from flask_jwt_extended import (
     jwt_required
 )
 import time
-def connect_to_database():
-    try:
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
+from configs.connection import connect_to_database
   
 class CartIemModel:
     def __init__(self):

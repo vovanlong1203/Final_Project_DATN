@@ -4,19 +4,8 @@ from configs.config import dbconfig
 from typing import List
 from datetime import date
 import time
+from configs.connection import connect_to_database
 
-def connect_to_database():
-    try:
-
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
 
 class Product:
     def __init__(self, product_id=None, product_name=None, price=None, price_promote=None,quantity=None, quantity_sold=None, product_image=None, category_id=None, category_name=None):

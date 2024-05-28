@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask_cors import CORS
 
 app =  Flask(__name__)
-CORS(app, resources={r"*": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"*": {"origins": "https://admin-final-project-react-o57jud3ue-vanlongs-projects.vercel.app"}})
 
 UPLOAD_FOLDER = 'static/images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} 
@@ -24,6 +24,5 @@ except Exception as e:
     print(e)
 
 if __name__ == '__main__':
-    # app.run(debug=True)
-     app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'))
+     app.run(host='0.0.0.0')
     

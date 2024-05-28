@@ -23,21 +23,9 @@ from flask_jwt_extended import (
     unset_access_cookies, 
     get_jwt
 )
-
+from configs.connection import connect_to_database
 
 bucket = configs.firebase_config.get_bucket()
-
-def connect_to_database():
-    try:
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
 
 class User:
     def __init__(self, user_id=None,  full_name=None, gender=None, 

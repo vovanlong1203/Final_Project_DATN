@@ -3,17 +3,8 @@ import mysql.connector
 from configs.config import dbconfig
 from enum import Enum
 from datetime import datetime
-def connect_to_database():
-    try:
-        con = mysql.connector.connect(
-                    host = dbconfig["host"],
-                    user = dbconfig["username"],
-                    password = dbconfig["password"],
-                    database = dbconfig["database"])
-        return con
-    except mysql.connector.Error as err:
-        print(f"Lỗi kết nối đến cơ sở dữ liệu: {err}")
-        return None
+from configs.connection import connect_to_database
+
 
 class DiscountType(Enum):
     amount = 'AMOUNT'
