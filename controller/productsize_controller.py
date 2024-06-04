@@ -19,3 +19,9 @@ def get_data_product_size():
 def insert_data_product_size():
     with lock:
         return productsize_model.add_data(request.json)
+
+@app.route("/api/product_size/admin/search-product-size-admin", methods=["GET"])
+# @jwt_required()
+def search_product_size_admin():
+    with lock:
+        return productsize_model.search_product_size_admin()

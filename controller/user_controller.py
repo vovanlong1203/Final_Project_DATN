@@ -7,10 +7,12 @@ from flask_jwt_extended import (
     get_jwt_identity, set_access_cookies,
     set_refresh_cookies, unset_jwt_cookies, get_jwt
 )
+from configs.config_thread import lock
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 from datetime import timedelta
+from configs.config_thread import lock
 user_model = UserModel()
 
 @app.after_request
@@ -29,11 +31,13 @@ def refresh_expiring_jwts(response):
 @app.route("/users/all", methods=["GET"])
 @jwt_required()
 def get_all_users():
-    return user_model.get_all_user()
+    with lock:
+        return user_model.get_all_user()
 
 @app.route("/users/register", methods=["POST"])
 def register_users():
-    return user_model.register_user(request.json)
+    with lock:
+        return user_model.register_user(request.json)
 
 @app.route("/users/login", methods=["POST"])
 def login_user():
@@ -41,7 +45,8 @@ def login_user():
 
 @app.route("/admin/login", methods=["POST"])
 def login_admin():
-    return user_model.login_admin(request.json)
+    with lock:
+        return user_model.login_admin(request.json)
 
 @app.route("/logout", methods=['DELETE'])
 @jwt_required()
@@ -79,13 +84,35 @@ def update_user_1(id):
 @app.route("/user/<int:id>", methods=['GET'])
 @jwt_required()
 def detail_user(id):
-    return user_model.get_user_by_id(id)
+    with lock:
+        return user_model.get_user_by_id(id)
 
 @app.route("/api/admin/user", methods=["GET"])
 @jwt_required()
 def get_count_user(): 
-    return user_model.get_count_user()
+    with lock:
+        return user_model.get_count_user()
 
 @app.route("/api/auth/verify-gg", methods=["POST"])
 def login_by_gg(): 
-    return user_model.login_by_gg()
+    with lock:
+        return user_model.login_by_gg()
+
+@app.route("/api/admin/users/count", methods=['GET'])
+@jwt_required()
+def get_count_users():
+    with lock:
+        return user_model.get_count_users()
+    
+    
+@app.route("/api/admin/users", methods=['GET'])
+@jwt_required()
+def get_user_admin():
+    with lock:
+        return user_model.get_user_admin()
+    
+@app.route("/api/admin/users/<int:id>", methods=['PUT'])
+@jwt_required()
+def is_lock_user(id):
+    with lock:
+        return user_model.is_lock_user(id)

@@ -32,3 +32,9 @@ def update_category(id):
 def delete_category(id):
     with lock:
         return category_model.delete_category(id)
+
+@app.route("/api/admin/category/count", methods=["GET"])
+@jwt_required()
+def get_count_category():
+    with lock:
+        return category_model.get_count_category()

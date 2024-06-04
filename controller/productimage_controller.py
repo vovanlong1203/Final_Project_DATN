@@ -19,8 +19,8 @@ def add_dataProductImage():
     with lock:
         return product_image_model.add_data(request.form)
 
-@app.route("/api/admin/product_image/<int:id>", methods=['DELETE'])
+@app.route("/api/admin/search-image-admin", methods=['GET'])
 @jwt_required()
-def delete_product_images(id):
+def search_image_admin():
     with lock:
-        return product_image_model.delete_data(id)
+        return product_image_model.search_image_admin()

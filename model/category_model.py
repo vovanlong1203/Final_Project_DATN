@@ -93,3 +93,16 @@ class CategoryModel:
                 "msg": str(e)
             })
 
+
+    def get_count_category(self):
+        try:
+            query = "select count(*) as count from categories"
+            self.cur.execute(query)
+            result = self.cur.fetchone()
+            self.con.commit()
+            count = result['count']
+            return jsonify(
+                int(count)
+            )
+        except Exception as e:
+            print("error: ", str(e))    

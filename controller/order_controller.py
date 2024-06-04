@@ -82,4 +82,33 @@ def get_year_order():
 def get_status_order():
     with lock:
         return size_model.get_status_order()
+    
+    
+@app.route("/api/admin/orders/count", methods=['GET'])
+@jwt_required()
+def get_count_order():
+    with lock:
+        return size_model.get_count_order()
+    
+@app.route("/api/admin/search_orders_admin", methods=['GET'])
+@jwt_required()
+def search_order_admin():
+    with lock:
+        return size_model.search_order_admin()
+    
+@app.route("/api/admin/get-order-month-year", methods=['GET'])
+# @jwt_required()
+def get_orders_by_month_year():
+    with lock:
+        return size_model.get_orders_by_month_year()
+    
+@app.route("/api/admin/get-status-month-year", methods=['GET'])
+@jwt_required()
+def get_order_status_by_month_year():
+    with lock:
+        return size_model.get_order_status_by_month_year()
 
+@app.route("/api/admin/order-items/<string:id>", methods=['GET'])
+# @jwt_required()
+def get_detail_product_orders(id):
+    return size_model.get_detail_product_order(id)

@@ -51,4 +51,25 @@ def update_product():
 def delete_product(id):
     with lock:
         return product_model.delete_product(id)
+    
+    
+@app.route("/api/admin/product/count", methods=['GET'])
+@jwt_required()
+def get_count_product():
+    with lock:
+        return product_model.get_count_product()
+
+
+@app.route("/api/admin/products", methods=['GET'])
+@jwt_required()
+def get_products_pagination():
+    with lock:
+        return product_model.get_products_pagination()
+
+@app.route("/api/admin/search_products_admin", methods=['GET'])
+@jwt_required()
+def search_products_admin():
+    with lock:
+        return product_model.search_products_admin()
+
 

@@ -193,7 +193,7 @@ class OrderModel:
             return jsonify({
                 "urlPayment" : urlPayment,
                 "orderId": orderId
-            }), 200
+            }), 201
         except Exception as e:
             print("error: ", str(e))
             return jsonify({
@@ -222,7 +222,7 @@ class OrderModel:
     def get_all_order(self):
         try:
             query = f"""
-                SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date
+                SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date, o.discount_amount, o.totalProductAmount, o.shippingFee, o.discountShippingFee
                 FROM orders o
                 INNER JOIN users u
                 ON o.user_id = u.id
@@ -242,7 +242,11 @@ class OrderModel:
                     "phone_number": result['phone_number'],
                     "shipping_address": result['shipping_address'],
                     "status": result['status'],
-                    "order_date": result['order_date']
+                    "order_date": result['order_date'],
+                    'discount_amount': result['discount_amount'],
+                    'totalProductAmount': result['totalProductAmount'],
+                    'shippingFee': result['shippingFee'],
+                    'discountShippingFee': result['discountShippingFee']
                 })
             
             return jsonify(list_order)
@@ -254,15 +258,17 @@ class OrderModel:
             
     def update_status_order(self, id, data):
         try:
-            query = f"""
+            query = """
                 UPDATE orders
                 SET status = %s
                 WHERE id = %s
             """
             self.cur.execute(query, (data['status'], id))
             self.con.commit()
+            return jsonify({"message": "Status updated successfully"}), 200
         except Exception as e:
             print("error", str(e))
+            return jsonify({"error": str(e)}), 500
 
             
     def get_list_order_item(self, orderId):
@@ -545,11 +551,11 @@ class OrderModel:
                     EXTRACT(MONTH FROM order_date) as month,
                     SUM(total_amount) as revenue
                 FROM orders
-                WHERE EXTRACT(YEAR FROM order_date) = %s
+                WHERE EXTRACT(YEAR FROM order_date) = %s AND status != %s
                 GROUP BY EXTRACT(MONTH FROM order_date)
                 ORDER BY month
             """
-            self.cur.execute(query, (year,))
+            self.cur.execute(query, (year, 'CANCELLED'))
             results = self.cur.fetchall()
             revenue_data = [{"month": int(result['month']), "revenue": float(result['revenue'])} for result in results]
 
@@ -586,6 +592,9 @@ class OrderModel:
     def get_status_order(self):
         try:
             year = request.args.get('year')
+            if not year:
+                raise ValueError("The 'year' parameter is required.")
+
             query = """
                 SELECT 
                 status,
@@ -594,15 +603,205 @@ class OrderModel:
                 WHERE EXTRACT(YEAR FROM order_date) = %s
                 GROUP BY status
             """
-            self.cur.execute(query,(year,))
+            self.cur.execute(query, (year,))
             results = self.cur.fetchall()
             
-            statusList = {result['status'] : result['count'] for result in results}
+            # Kiểm tra và xử lý giá trị None trong kết quả truy vấn
+            statusList = {}
+            for result in results:
+                status = result['status']
+                count = result['count']
+                if status is not None:
+                    statusList[status] = count
+                else:
+                    statusList['Unknown'] = count
+
             self.con.commit()
             return jsonify(statusList)
         except Exception as e:
             print("error: ", str(e))
             return jsonify({
                 "msg": str(e)
-            }) , 500
+            }), 500
 
+
+    def get_count_order(self):
+        try:
+            query = "select count(*) as count from orders"
+            self.cur.execute(query)
+            result = self.cur.fetchone()
+            self.con.commit()
+            count = result['count']
+            return jsonify(
+                int(count)
+            )
+        except Exception as e:
+            print("error: ", str(e))         
+            
+
+    def search_order_admin(self):
+        try:
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 10))
+            offset = (page - 1) * limit
+            keyword = request.args.get('keyword', '').lower()
+
+            if keyword is not None:
+                query = """
+                    SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date, o.discount_amount, o.totalProductAmount, o.shippingFee, o.discountShippingFee
+                    FROM orders o
+                    INNER JOIN users u
+                    ON o.user_id = u.id
+                    WHERE LOWER(u.full_name) LIKE %s
+                    LIMIT %s OFFSET %s
+                """
+                search_keyword = f"%{keyword}%"
+                self.cur.execute(query, (search_keyword, limit, offset))
+            else:
+                query = """
+                    SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date
+                    FROM orders o
+                    INNER JOIN users u
+                    ON o.user_id = u.id
+                    LIMIT %s OFFSET %s
+                """
+                self.cur.execute(query, (limit, offset))
+            
+            results = self.cur.fetchall() # Đọc hết kết quả trước khi thực hiện thao tác khác
+            self.con.commit()
+            list_order = []
+            
+            for result in results:
+                list_order.append({
+                    "id": result['id'],
+                    "customer": result['full_name'],
+                    "total_amount": result['total_amount'],
+                    "payment_method": result['payment_method'],
+                    "phone_number": result['phone_number'],
+                    "shipping_address": result['shipping_address'],
+                    "status": result['status'],
+                    "order_date": result['order_date'],                    'discount_amount': result['discount_amount'],
+                    'totalProductAmount': result['totalProductAmount'],
+                    'shippingFee': result['shippingFee'],
+                    'discountShippingFee': result['discountShippingFee']
+                })
+            
+            if keyword is not None:
+                count_query = """
+                    SELECT COUNT(*) as count 
+                    FROM orders o
+                    INNER JOIN users u
+                    ON o.user_id = u.id
+                    WHERE LOWER(u.full_name) LIKE %s
+                """
+                self.cur.execute(count_query, (search_keyword,))
+            else:
+                count_query = "SELECT COUNT(*) as count FROM orders"
+                self.cur.execute(count_query)
+                
+            total_items = self.cur.fetchone()['count']
+            total_pages = (total_items + limit - 1) // limit
+            self.con.commit()
+            response = {
+                'items': list_order,
+                'totalPages': total_pages
+            }
+            print("response", response)
+            return jsonify(response)
+
+        except Exception as e:
+            print("error", str(e))
+            return jsonify({"msg": str(e)}), 500
+
+    def get_orders_by_month_year(self):
+        try:
+            month = request.args.get('month',5)
+            year = request.args.get('year', 2024)
+
+            query = """
+                SELECT 
+                   EXTRACT(DAY FROM order_date) as order_date ,
+                    sum(total_amount) as total
+                FROM orders
+                WHERE EXTRACT(YEAR FROM order_date) = %s
+                AND EXTRACT(MONTH FROM order_date) = %s 
+                AND status != 'CANCELLED'
+                GROUP BY EXTRACT(DAY FROM order_date)
+                ORDER BY order_date
+            """
+            self.cur.execute(query, (year, month))
+            results = self.cur.fetchall()
+            self.con.commit()
+            
+            orders = []
+            for result in results:
+                orders.append({
+                    'date': str(result['order_date']),  
+                    'total': float(result['total'])
+                })
+
+            return jsonify(orders)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg": str(e)
+            }), 500
+
+    def get_order_status_by_month_year(self):
+        try:
+            year = request.args.get('year', 2024)
+            month = request.args.get('month', 5)
+
+            query = """
+                SELECT 
+                    status,
+                    COUNT(*) as count
+                FROM orders
+                WHERE EXTRACT(YEAR FROM order_date) = %s
+                AND EXTRACT(MONTH FROM order_date) = %s
+                GROUP BY status
+            """
+            self.cur.execute(query, (year, month))
+            results = self.cur.fetchall()
+            self.con.commit()
+
+            orderStatus = []
+            for result in results:
+                orderStatus.append({
+                    'name': str(result['status']),  
+                    'value': int(result['count'])
+                })
+
+            return jsonify(orderStatus)
+        except Exception as e:
+            print("error: ", str(e))
+            return jsonify({
+                "msg": str(e)
+            }), 500
+
+    def get_detail_product_order(self, orderId):
+        try:
+            query = """
+                SELECT products.name as product, order_items.quantity as quantity, order_items.sizeType as size, order_items.unit_price as price FROM order_items
+                JOIN products ON order_items.product_id = products.id
+                WHERE order_items.order_id =  %s
+            """
+            self.cur.execute(query, (orderId,))
+            results = self.cur.fetchall()
+            print("results: ", results)
+            self.con.commit()
+            
+            list_product = []
+            for item in results:
+                list_product.append({
+                    "product": item['product'],
+                    "quantity": item['quantity'],
+                    "size": item['size'],
+                    "price": item['price']
+                })
+                
+            return jsonify(list_product)
+        except Exception as e:
+            print("error: ", str(e))
+            
+            

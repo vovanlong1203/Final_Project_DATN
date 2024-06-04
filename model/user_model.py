@@ -424,3 +424,100 @@ class UserModel:
             return jsonify({
                 'msg': err
             })
+
+    def get_count_users(self):
+        try:
+            query = "select count(*) as count from users"
+            self.cur.execute(query)
+            result = self.cur.fetchone()
+            self.con.commit()
+            count = result['count']
+            return jsonify(
+                int(count)
+            )
+        except Exception as e:
+            print("error: ", str(e))    
+            
+    def get_user_admin(self):
+        try:
+            keyword = request.args.get('keyword', '').lower()
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 10))
+            offset = (page - 1) * limit
+            
+            if keyword:
+                search_query = """
+                    SELECT * FROM users
+                    WHERE LOWER(full_name) LIKE %s
+                    LIMIT %s OFFSET %s
+                """
+                search_keyword = f"%{keyword}%"
+                self.cur.execute(search_query, (search_keyword, limit, offset))
+            else:
+                all_users_query = """
+                    SELECT * FROM users
+                    LIMIT %s OFFSET %s
+                """
+                self.cur.execute(all_users_query, (limit, offset))
+            
+            results = self.cur.fetchall()
+            self.con.commit()
+            users = []
+            
+            for result in results:
+                user = {
+                    'user_id': result['id'],
+                    'is_enabled': result['is_enabled'],
+                    'is_locked': result['is_locked'],
+                    'create_at': result['create_at'],
+                    'update_at': result['update_at'],
+                    'account_provider': result['account_provider'],
+                    'full_name': result['full_name'],
+                    'gender': result['gender'],
+                    'gmail': result['gmail'],
+                    'password': result['password'],
+                    'phone_number': result['phone_number'],
+                    'role': result['role'],
+                    'url_image': result['url_image'],
+                    'username': result['username']
+                }
+
+                users.append(user)
+            
+            if keyword:
+                count_query = """
+                    SELECT COUNT(*) as count 
+                    FROM users 
+                    WHERE LOWER(full_name) LIKE %s
+                """
+                self.cur.execute(count_query, (search_keyword,))
+            else:
+                count_query = "SELECT COUNT(*) as count FROM users"
+                self.cur.execute(count_query)
+            
+            total_items = self.cur.fetchone()['count']
+            total_pages = (total_items + limit - 1) // limit
+            self.con.commit()
+            response = {
+                'items': users,
+                'totalPages': total_pages
+            }
+            return jsonify(response), 200
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            return jsonify({"message": "error", "error": str(e)}), 500
+        
+    def is_lock_user(self, id):
+        try:
+            query = """
+                UPDATE users 
+                SET is_locked = 1
+                WHERE id = %s
+            """
+            self.cur.execute(query, (id,))
+            self.con.commit()
+            
+            return jsonify({"message": "lock user successfully"}), 200
+        except Exception as e:
+            print("error: ", str(e))
