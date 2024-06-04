@@ -1,27 +1,43 @@
 from app import app
 from model.product_model import ProductModel
+from flask_caching import Cache
 from flask import request, send_file, jsonify
 from flask_jwt_extended import (
     jwt_required
 )
 from configs.config_thread import lock
 product_model = ProductModel()
+cache = Cache(config={'CACHE_TYPE': 'simple'})
+cache.init_app(app)
 
 
 @app.route("/products/all", methods=["GET"])
+@cache.cached(timeout=60, key_prefix='all_products')
 def get_all_products():
     with lock:
         return product_model.get_all_products()
+    
+
+@app.route("/products", methods=["GET"])
+def get_products():
+    with lock:
+        return product_model.get_products()
+
+
 
 @app.route("/api/product/product/searchAll", methods=["GET"])
 def search_products():
     with lock:
         return product_model.search_products()
 
-@app.route("/products/product_detail", methods=["GET"])
-def get_product_detail():
+def make_cache_key():
+    return request.full_path
+
+@app.route("/products/product_detail/<int:id>", methods=["GET"])
+@cache.cached(timeout=60, key_prefix=make_cache_key)
+def get_product_detail(id):
     with lock:
-        return product_model.get_product_detail()
+        return product_model.get_product_detail(id)
 
 @app.route("/api/category", methods=["GET"])
 def get_category():

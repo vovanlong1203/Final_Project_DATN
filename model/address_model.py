@@ -97,10 +97,10 @@ class AddressModel:
             full_name = data.get("name")
             phone_number = data.get("phoneNumber")
 
-            if not is_valid_vietnamese_name(full_name):
-                return jsonify({
-                    "message" : "Tên không hợp lệ"
-                }),400
+            # if not is_valid_vietnamese_name(full_name):
+            #     return jsonify({
+            #         "message" : "Tên không hợp lệ"
+            #     }),400
     
             if not is_valid_phone_number(phone_number):
                 return jsonify({
@@ -108,6 +108,7 @@ class AddressModel:
                 }),400
 
             query_insert_address = f"INSERT INTO address (user_id, address, street, isDefault, wardCode, full_name, districtId, phone_number) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            query_set_isDefauld_address = f"UPDATE  address SET isDefault = 0 WHERE user_id = {userId} "
             address = Address(
             
                 user_id = userId,
@@ -131,6 +132,10 @@ class AddressModel:
                 address_data['districtId'],
                 address_data['phoneNumber']
             )
+            if data.get('isDefault') == True:
+                self.cur.execute(query_set_isDefauld_address)
+                self.con.commit()
+
             self.cur.execute(query_insert_address, address_values)
             self.con.commit()
             return jsonify({
