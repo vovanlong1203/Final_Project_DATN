@@ -62,3 +62,9 @@ def VerifyOTP():
 @app.route("/api/auth/reset-password", methods = ['PUT'] )
 def reset_password():
     return individual_model.reset_password(request.json)
+
+
+@app.route("/api/users/<int:id>/change-password", methods=['POST'])
+@jwt_required()
+def change_password(id): 
+    return individual_model.ChangePassword(id)

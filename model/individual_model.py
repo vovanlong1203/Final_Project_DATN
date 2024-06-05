@@ -334,4 +334,35 @@ class IndividualModel:
             return jsonify({
                 err
             }),500
+    def ChangePassword(self,id):
+        try:
+            data=request.json
+            cur_pass = data['currentPassword']
+            new_pass = data['newPassword']
+            query_find_pass = f"""
+                                SELECT password FROM users
+                                WHERE id = {id}
 
+                                """
+            self.cur.execute(query_find_pass)
+          
+            password = self.cur.fetchone()['password']
+            self.con.commit()
+            print(password)
+            if cur_pass == password :
+                query_change_pass = f"""
+                    UPDATE users SET password ='{new_pass}'
+                WHERE id = {id}
+                """
+                self.cur.execute(query_change_pass)
+                self.con.commit()
+                return jsonify({}),200
+
+            else:
+                return jsonify({
+                    "message":"Mật khẩu không trùng khớp với mật khẩu cũ."
+                }),400
+        except Exception as e:
+            return jsonify({
+                "message": e
+            })
