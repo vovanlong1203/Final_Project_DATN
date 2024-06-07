@@ -59,7 +59,6 @@ class Recommend_System:
         return list
     
     
-    
     def get_list_product(self, userId):
         try:
             print("user_id: ", userId)
@@ -67,17 +66,64 @@ class Recommend_System:
             self.cur.execute(query)
             result = self.cur.fetchall()
             self.con.commit()
-            time.sleep(0.2)
-            # Convert result to pandas DataFrame
+            time.sleep(0.1)
+
             columns = ['user_id', 'product_id', 'rate']
             data = pd.DataFrame(result, columns=columns)
             
-            print("data: ", data)
-            
+            if data.empty or userId not in data['user_id'].values:
+                query_top_products = """
+                    SELECT
+                        pr.id,
+                        pr.name,
+                        pr.price,
+                        SUM(psi.quantity) AS quantity,
+                        SUM(psi.quantity_sold) AS quantity_sold,
+                        GROUP_CONCAT(pi.url) AS Link_anh,
+                        pr.category_id AS category_id,
+                        ct.name AS category_name,
+                        CASE 
+                            WHEN promotions.discount_value IS NULL OR promotions.is_active = 0 OR promotions.end_at < NOW() THEN pr.price 
+                            ELSE (pr.price - promotions.discount_value) 
+                        END AS price_promote 
+
+                    FROM
+                        products pr
+                    LEFT JOIN product_images pi ON pi.product_id = pr.id
+                    LEFT JOIN categories ct ON ct.id = pr.category_id
+                    LEFT JOIN product_size psi ON psi.product_id = pr.id
+                    LEFT JOIN promotions ON pr.promotion_id = promotions.id
+                    WHERE pr.is_deleted != TRUE
+                    GROUP BY pr.id
+                    ORDER BY SUM(psi.quantity_sold) DESC
+                    LIMIT 4;
+                """
+                self.cur.execute(query_top_products)
+                results = self.cur.fetchall()
+                self.con.commit()
+                
+                products = []
+                for result in results:
+                    product_image = result['Link_anh'].split(',') if result.get('Link_anh') else []
+
+                    products.append({
+                        "product_id": result['id'],
+                        "product_name": result['name'],
+                        'price': result['price'],
+                        "price_promote": result['price_promote'],
+                        "quantity": result['quantity'],
+                        "quantity_sold": result['quantity_sold'],
+                        "product_image": product_image,
+                        "category_id": result['category_id'],
+                        "category_name": result['category_name']
+                    })
+                
+                return jsonify({
+                    "items": products
+                })
+
             unique_user_ids = list(set(data['user_id']))
             unique_product_ids = list(set(data['product_id']))
-            print("unique_user_ids: ", unique_user_ids)
-            print("unique_product_ids: ", unique_product_ids)
             num_users = len(unique_user_ids)
             num_products = len(unique_product_ids)
             ratings = np.zeros((num_users, num_products))
@@ -92,7 +138,7 @@ class Recommend_System:
             
             for i in range(num_users):
                 for j in range(num_users):
-                    if i!= j:
+                    if i != j:
                         similarity_matrix[i, j] = 1 - cosine(ratings[i, :], ratings[j, :])
 
             user_index = unique_user_ids.index(userId)
@@ -100,28 +146,27 @@ class Recommend_System:
 
             for i, product_id in enumerate(unique_product_ids):
                 if ratings[user_index, i] == 0:
-                    rated_product_indices = np.where(ratings[user_index, :]!= 0)[0]
+                    rated_product_indices = np.where(ratings[user_index, :] != 0)[0]
                     if len(rated_product_indices) == 0:
                         continue
-                    weights = np.array([similarity_matrix[user_index, k] for k in range(num_users) if k!= user_index])
-                    ratings_of_product = np.array([ratings[k, i] for k in range(num_users) if k!= user_index])
+                    weights = np.array([similarity_matrix[user_index, k] for k in range(num_users) if k != user_index])
+                    ratings_of_product = np.array([ratings[k, i] for k in range(num_users) if k != user_index])
                     if np.sum(weights) == 0:
                         continue
                     predicted_rating = np.dot(weights, ratings_of_product) / np.sum(weights)
                     if predicted_rating > 0:
                         recommendations.append((product_id, predicted_rating))
-                
-                
+            
             if len(recommendations) < 5:
                 ratings_array = np.array(ratings)
                 max_ratings = np.max(ratings_array, axis=0)
                 max_ratings_indices = np.argsort(max_ratings)[::-1]
                 for i in max_ratings_indices[:5 - len(recommendations)]:
-                    recommendations.append((unique_product_ids[i], ratings_array[unique_user_ids!= user_id, i].mean()))                
+                    recommendations.append((unique_product_ids[i], ratings_array[unique_user_ids != userId, i].mean()))                
 
             recommendations.sort(key=lambda x: x[1], reverse=True)
             recommended_product_ids = [product_id for product_id, _ in recommendations[:5]]                        
-            
+            print("recommended_product_ids: ", recommended_product_ids)
             query = """
                 WITH AnhSanPham AS (
                     SELECT
@@ -161,32 +206,32 @@ class Recommend_System:
                 GROUP BY
                     pr.id;
             """ % ",".join(map(str, recommended_product_ids))
-
+            print("query: ", query)
             self.cur.execute(query)
             results = self.cur.fetchall()
             self.con.commit()
             products = []
             for result in results:
-                if result.get('Link_anh'):
-                    product_image = result['Link_anh'].split(',')
-                else:
-                    product_image = []
+                product_image = result['Link_anh'].split(',') if result.get('Link_anh') else []
 
                 products.append({
                     "product_id": result['id'],
                     "product_name": result['name'],
                     'price': result['price'],
-                    "price_promote":result['price_promote'],
-                    "quantity":result['quantity'],
-                    "quantity_sold":result['quantity_sold'],
-                    "product_image":product_image,
-                    "category_id":result['category_id'],
-                    "category_name":result['category_name']
+                    "price_promote": result['price_promote'],
+                    "quantity": result['quantity'],
+                    "quantity_sold": result['quantity_sold'],
+                    "product_image": product_image,
+                    "category_id": result['category_id'],
+                    "category_name": result['category_name']
                 })
                 
             return jsonify({
-                "items":products
+                "items": products
             })
         except Exception as e:
             print("error: ", str(e))
-            
+            return jsonify({
+                "error": str(e)
+            })
+              

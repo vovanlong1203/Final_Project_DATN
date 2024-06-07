@@ -9,7 +9,7 @@ from configs.config_thread import lock
 recommend_System = Recommend_System()
 
 @app.route("/api/products/recommend-system/<int:userId>", methods=["GET"])
-# @jwt_required()
+@jwt_required()
 def get_list_product_by_recommend(userId):
     with lock:
         print(userId)

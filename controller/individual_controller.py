@@ -38,18 +38,18 @@ def upload_avatar(userId):
 @app.route("/api/users/<int:id>", methods=['PUT'])
 @jwt_required()
 def update_user(id): 
-    print (request.json)
-    result = individual_model.update_user(request.json, id )
-
-    return result
+    with lock:
+        print (request.json)
+        result = individual_model.update_user(request.json, id)
+        return result
 
 
 @app.route("/api/auth/forgot-password", methods=['POST'])
 def SenOTP(): 
     try:
-        username = request.args.get("username")
-        return  individual_model.for_got_password(username)
-
+        with lock:
+            username = request.args.get("username")
+            return  individual_model.for_got_password(username)
     except Exception as e:
         print(f"Lỗi: {e}")
         return jsonify({'message': 'Lỗi không nhận được username'}), 500
@@ -57,14 +57,17 @@ def SenOTP():
 
 @app.route("/api/auth/verify-otp", methods=['POST'])
 def VerifyOTP(): 
-    return  individual_model.verify_otp()
+    with lock:
+        return  individual_model.verify_otp()
 
 @app.route("/api/auth/reset-password", methods = ['PUT'] )
 def reset_password():
-    return individual_model.reset_password(request.json)
+    with lock:
+        return individual_model.reset_password(request.json)
 
 
 @app.route("/api/users/<int:id>/change-password", methods=['POST'])
 @jwt_required()
 def change_password(id): 
-    return individual_model.ChangePassword(id)
+    with lock:
+        return individual_model.ChangePassword(id)

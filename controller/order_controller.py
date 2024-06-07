@@ -52,7 +52,8 @@ def cancel_order(orderId):
 
 @app.route('/vnpay_return', methods=['GET'])
 def vnpay_return():
-    return size_model.vnpay_return()
+    with lock:
+        return size_model.vnpay_return()
 
 @app.route("/api/orders/users/<int:userId>/order-items",methods= ['GET'])
 @jwt_required()
@@ -63,7 +64,8 @@ def get_orderItem_received(userId):
 @app.route("/api/comment",methods = ['POST'])
 @jwt_required()
 def sent_comment():
-    return size_model.send_comment()
+    with lock:
+        return size_model.send_comment()
 
 @app.route("/api/admin/orders/revenue", methods=["GET"])
 @jwt_required()

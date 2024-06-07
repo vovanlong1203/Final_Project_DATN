@@ -41,7 +41,8 @@ def register_users():
 
 @app.route("/users/login", methods=["POST"])
 def login_user():
-    return user_model.login(request.json)
+    with lock:
+        return user_model.login(request.json)
 
 @app.route("/admin/login", methods=["POST"])
 def login_admin():
@@ -51,7 +52,8 @@ def login_admin():
 @app.route("/logout", methods=['DELETE'])
 @jwt_required()
 def logout_user():
-    return user_model.logout()
+    with lock:
+        return user_model.logout()
 
 @app.route("/token/refresh", methods=['POST'])
 @jwt_required(refresh=True)
