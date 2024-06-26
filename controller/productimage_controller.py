@@ -24,3 +24,9 @@ def add_dataProductImage():
 def search_image_admin():
     with lock:
         return product_image_model.search_image_admin()
+    
+@app.route("/api/admin/product_image/<int:id>", methods=["DELETE"])
+@jwt_required()
+def delete_ProductImage(id):
+    with lock:
+        return product_image_model.delete_data(id)

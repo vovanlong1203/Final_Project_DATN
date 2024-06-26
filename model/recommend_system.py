@@ -128,11 +128,19 @@ class Recommend_System:
             num_products = len(unique_product_ids)
             ratings = np.zeros((num_users, num_products))
             
+            # for i, user_id in enumerate(unique_user_ids):
+            #     for j, product_id in enumerate(unique_product_ids):
+            #         rating_index = [k for k in range(len(data['user_id'])) if data['user_id'][k] == user_id and data['product_id'][k] == product_id]
+            #         if rating_index:
+            #             ratings[i, j] = data['rate'][rating_index[0]] if rating_index[0] < len(data['rate']) else 0
+            
             for i, user_id in enumerate(unique_user_ids):
                 for j, product_id in enumerate(unique_product_ids):
-                    rating_index = [k for k in range(len(data['user_id'])) if data['user_id'][k] == user_id and data['product_id'][k] == product_id]
-                    if rating_index:
-                        ratings[i, j] = data['rate'][rating_index[0]] if rating_index[0] < len(data['rate']) else 0
+                    for k in range(len(data['user_id'])):
+                        if data['user_id'][k] == user_id and data['product_id'][k] == product_id:
+                            ratings[i, j] = data['rate'][k]
+                            break
+                             
 
             similarity_matrix = np.zeros((num_users, num_users))
             

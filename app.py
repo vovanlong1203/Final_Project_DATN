@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask_cors import CORS
 
 app =  Flask(__name__)
-CORS(app, resources={r"*": {"origins": "https://admin-final-project-react-js.vercel.app"}})
+CORS(app, resources={r"*": {"origins": "http://localhost:5173"}})
 
 UPLOAD_FOLDER = 'static/images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} 

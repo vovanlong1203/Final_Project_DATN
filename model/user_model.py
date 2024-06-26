@@ -449,10 +449,11 @@ class UserModel:
                 search_query = """
                     SELECT * FROM users
                     WHERE LOWER(full_name) LIKE %s
+                    OR LOWER(username) LIKE %s
                     LIMIT %s OFFSET %s
                 """
                 search_keyword = f"%{keyword}%"
-                self.cur.execute(search_query, (search_keyword, limit, offset))
+                self.cur.execute(search_query, (search_keyword, search_keyword, limit, offset))
             else:
                 all_users_query = """
                     SELECT * FROM users

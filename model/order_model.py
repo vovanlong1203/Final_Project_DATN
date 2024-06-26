@@ -13,9 +13,11 @@ import hmac
 import time
 import socket
 from configs.connection import connect_to_database
+from configs.config_thread import lock
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 
+local_ip = "192.168.1.9"
 def generate_random_string(length):
     characters = string.ascii_uppercase + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
@@ -358,7 +360,7 @@ class OrderModel:
         # Tạo ngày giờ hiện tại theo múi giờ "Etc/GMT+7"
         cld = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
         vnp_CreateDate = cld.strftime("%Y%m%d%H%M%S")
-        cld += datetime.timedelta(minutes=0.2)
+        cld += datetime.timedelta(minutes=5)
         vnp_ExpireDate = cld.strftime("%Y%m%d%H%M%S")
 
         inputData = {
@@ -653,21 +655,27 @@ class OrderModel:
                     INNER JOIN users u
                     ON o.user_id = u.id
                     WHERE LOWER(u.full_name) LIKE %s
+                    OR LOWER(o.payment_method) LIKE %s
+                    OR o.id LIKE %s
+                    OR LOWER(o.status) LIKE %s
+                    OR LOWER(o.phone_number) LIKE %s
+                    ORDER BY o.order_date DESC
                     LIMIT %s OFFSET %s
                 """
                 search_keyword = f"%{keyword}%"
-                self.cur.execute(query, (search_keyword, limit, offset))
+                self.cur.execute(query, (search_keyword, search_keyword, search_keyword, search_keyword, search_keyword, limit, offset))
             else:
                 query = """
-                    SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date
+                    SELECT o.id, u.full_name, o.total_amount, o.payment_method, o.phone_number, o.shipping_address, o.status, o.order_date, o.discount_amount, o.totalProductAmount, o.shippingFee, o.discountShippingFee
                     FROM orders o
                     INNER JOIN users u
                     ON o.user_id = u.id
+                    ORDER BY o.order_date DESC
                     LIMIT %s OFFSET %s
                 """
                 self.cur.execute(query, (limit, offset))
             
-            results = self.cur.fetchall() # Đọc hết kết quả trước khi thực hiện thao tác khác
+            results = self.cur.fetchall()
             self.con.commit()
             list_order = []
             
@@ -680,7 +688,8 @@ class OrderModel:
                     "phone_number": result['phone_number'],
                     "shipping_address": result['shipping_address'],
                     "status": result['status'],
-                    "order_date": result['order_date'],                    'discount_amount': result['discount_amount'],
+                    "order_date": result['order_date'],
+                    'discount_amount': result['discount_amount'],
                     'totalProductAmount': result['totalProductAmount'],
                     'shippingFee': result['shippingFee'],
                     'discountShippingFee': result['discountShippingFee']
@@ -693,8 +702,11 @@ class OrderModel:
                     INNER JOIN users u
                     ON o.user_id = u.id
                     WHERE LOWER(u.full_name) LIKE %s
+                    OR LOWER(o.payment_method) LIKE %s
+                    OR LOWER(o.status) LIKE %s
+                    OR LOWER(o.phone_number) LIKE %s
                 """
-                self.cur.execute(count_query, (search_keyword,))
+                self.cur.execute(count_query, (search_keyword, search_keyword, search_keyword, search_keyword))
             else:
                 count_query = "SELECT COUNT(*) as count FROM orders"
                 self.cur.execute(count_query)
